@@ -112,9 +112,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 }
 
 void log_timestamps(const time_point &local_send,
-                    const time_point &local_receive,
+                    const time_point &remote_receive,
                     const time_point &remote_send,
-                    const time_point &remote_receive, bool is_server) {
+                    const time_point &local_receive, bool is_server) {
   auto duration = [](time_point start, time_point end) {
     return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
         .count();
