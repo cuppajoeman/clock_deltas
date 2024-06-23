@@ -81,26 +81,29 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   // (A) Note: On the very first send out of the client, remote_receive equals
   // remote_send. Refer to process_client_events in client.cpp for details.
 
-  std::chrono::microseconds travel_time;
+  std::chrono::microseconds travel_time_offset;
   if (remote_ts.remote_receive != remote_ts.remote_send) {
     std::this_thread::sleep_for(
         std::chrono::milliseconds(1000)); // Simulate computation time
 
-    travel_time = compute_travel_offset(
+    travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
         local_receive, remote_ts.clock_offset);
 
   } else { // iteration 0
-    travel_time = std::chrono::microseconds(0);
+    travel_time_offset = std::chrono::microseconds(0);
   }
 
-  std::chrono::microseconds clock_offset =
-      compute_clock_offset(last_local_send, remote_ts.remote_receive,
-                           remote_ts.remote_send, local_receive, travel_time);
+  std::chrono::microseconds clock_offset = compute_clock_offset(
+      last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
+      local_receive, travel_time_offset);
 
   // Send timestamps back to client
   time_point local_send_time = get_current_time();
-  time_point expected_receive_time = local_send_time + clock_offset;
+  time_point expected_receive_time =
+      local_send_time +
+      ((is_server ? (-1) : 1) *
+       clock_offset); // bad need to account for directional travel time
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
                          clock_offset});
 
