@@ -9,7 +9,7 @@ void process_server_events(ENetHost *server);
 
 int main(int argc, char **argv) {
   ENetAddress address;
-  ENetHost *server = initialize_enet_host(&address, 32, 1234);
+  ENetHost *server = initialize_enet_host(&address, 32, 7777);
 
   process_server_events(server);
 

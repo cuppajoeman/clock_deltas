@@ -14,14 +14,14 @@ ENetPeer *attempt_connection_and_return_peer(ENetHost *client,
   ENetEvent event;
   if (enet_host_service(client, &event, 5000) > 0 &&
       event.type == ENET_EVENT_TYPE_CONNECT) {
-    std::cout << "Connection to some.server.net:1234 succeeded.";
+    std::cout << "Connection to some.server.net:7777 succeeded.";
   } else {
     /* Either the 5 seconds are up or a disconnect event was */
     /* received. Reset the peer in the event the 5 seconds   */
     /* had run out without any significant event.            */
     enet_peer_reset(peer);
 
-    puts("Connection to some.server.net:1234 failed.");
+    puts("Connection to some.server.net:7777 failed.");
   }
   return peer;
 }
@@ -31,9 +31,16 @@ int main(int argc, char **argv) {
   ENetAddress address;
   ENetPeer *peer;
 
+  bool running_online = true;
+
   client = initialize_enet_host(nullptr, 1, 0);
-  enet_address_set_host(&address, "localhost");
-  address.port = 1234;
+
+  if (running_online) {
+    enet_address_set_host(&address, "104.131.10.102");
+  } else {
+    enet_address_set_host(&address, "localhost");
+  }
+  address.port = 7777;
 
   peer = attempt_connection_and_return_peer(client, address);
 
