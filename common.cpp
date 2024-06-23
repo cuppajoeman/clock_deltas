@@ -104,8 +104,8 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
                          clock_offset});
 
-  log_timestamps(last_local_send, remote_ts.remote_receive, local_receive,
-                 remote_ts.remote_send, is_server);
+  log_timestamps(last_local_send, remote_ts.remote_receive,
+                 remote_ts.remote_send, local_receive, is_server);
 
   // Cleanup packet
   enet_packet_destroy(event.packet);
