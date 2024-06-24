@@ -115,7 +115,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::chrono::microseconds raw_travel_time_offset;
   if (remote_ts.remote_receive != remote_ts.remote_send) {
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(100)); // Simulate computation time
+        std::chrono::milliseconds(10)); // Simulate computation time
 
     raw_travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
@@ -129,7 +129,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   bool use_average = true;
 
   travel_offset_rb.add(raw_travel_time_offset);
-  travel_offset_rb.print_contents();
+  // travel_offset_rb.print_contents();
   std::cout << "travel offset with average: "
             << travel_offset_rb.average().count()
             << " without average: " << raw_travel_time_offset.count();
@@ -141,7 +141,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       local_receive, travel_time_offset, is_server);
 
   clock_offset_rb.add(raw_clock_offset);
-  clock_offset_rb.print_contents();
+  // clock_offset_rb.print_contents();
 
   std::cout << "clock offset with average: "
             << static_cast<long long>(clock_offset_rb.average().count())
