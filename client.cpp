@@ -54,8 +54,8 @@ int main(int argc, char **argv) {
 void process_client_events(ENetHost *client, ENetPeer *peer,
                            time_point &last_local_send) {
   // (A) Initial send with receive_time and send_time as current time
-  //
-  send_timestamps(peer, {get_current_time(), get_current_time()});
+  auto current_time = get_current_time();
+  send_timestamps(peer, {current_time, current_time});
 
   ENetEvent event;
 
