@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 
 void process_server_events(ENetHost *server) {
 
-  int max_samples_to_average_over = 10;
+  int max_samples_to_average_over = 1000;
   RingBuffer clock_offset_rb(max_samples_to_average_over);
   RingBuffer travel_offset_rb(max_samples_to_average_over);
 

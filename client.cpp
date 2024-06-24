@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
 void process_client_events(ENetHost *client, ENetPeer *peer,
                            time_point &last_local_send) {
-  int max_samples_to_average_over = 10;
+  int max_samples_to_average_over = 1000;
   RingBuffer clock_offset_rb(max_samples_to_average_over);
   RingBuffer travel_offset_rb(max_samples_to_average_over);
   // (A) Initial send with receive_time and send_time as current time
