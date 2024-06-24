@@ -32,7 +32,7 @@ std::chrono::microseconds compute_travel_offset(
 //   return std::chrono::duration_cast<std::chrono::microseconds>(server_time);
 // }
 
-std::chrono::microseconds compute_expected_local_receive_time(
+time_point compute_expected_local_receive_time(
     const time_point &local_send, const time_point &remote_send,
     const time_point &local_receive, std::chrono::microseconds clock_offset,
     std::chrono::microseconds travel_offset, bool is_server) {
@@ -45,8 +45,7 @@ std::chrono::microseconds compute_expected_local_receive_time(
   auto expected_local_receive_time =
       send_time_from_remote_pov + travel_time_from_local_to_remote;
 
-  return std::chrono::duration_cast<std::chrono::microseconds>(
-      expected_local_receive_time.time_since_epoch());
+  return expected_local_receive_time;
 }
 
 ENetHost *initialize_enet_host(ENetAddress *address, size_t peer_count,
@@ -123,10 +122,10 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   // Send timestamps back to client
   time_point local_send_time = get_current_time();
-  time_point expected_receive_time =
-      local_send_time +
-      ((is_server ? (-1) : 1) *
-       clock_offset); // bad need to account for directional travel time
+
+  time_point expected_receive_time = compute_expected_local_receive_time(
+      local_send_time, remote_ts.remote_send, local_receive, clock_offset,
+      travel_time_offset, is_server);
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
                          clock_offset});
 
