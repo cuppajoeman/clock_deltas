@@ -11,9 +11,9 @@ add_subdirectory(external_libraries/enet)
 include_directories(external_libraries/enet/include)
 
 # Server executable
-add_executable(server server.cpp common.cpp)
+add_executable(server server.cpp common.cpp ring_buffer.cpp)
 target_link_libraries(server enet)
 
 # Client executable
-add_executable(client client.cpp common.cpp)
+add_executable(client client.cpp common.cpp ring_buffer.cpp)
 target_link_libraries(client enet)

@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include "ring_buffer.hpp"
 
 void process_client_events(ENetHost *client, ENetPeer *peer,
                            time_point &last_local_send);
@@ -53,6 +54,9 @@ int main(int argc, char **argv) {
 
 void process_client_events(ENetHost *client, ENetPeer *peer,
                            time_point &last_local_send) {
+  int max_samples_to_average_over = 1000;
+  RingBuffer clock_offset_rb(max_samples_to_average_over);
+  RingBuffer travel_offset_rb(max_samples_to_average_over);
   // (A) Initial send with receive_time and send_time as current time
   auto current_time = get_current_time();
   send_timestamps(peer, {current_time, current_time});
@@ -65,7 +69,8 @@ void process_client_events(ENetHost *client, ENetPeer *peer,
       switch (event.type) {
       case ENET_EVENT_TYPE_RECEIVE:
         std::cout << "client receive\n";
-        handle_receive_event(event, peer, last_local_send, false);
+        handle_receive_event(event, peer, last_local_send, clock_offset_rb,
+                             travel_offset_rb, false);
         break;
 
       case ENET_EVENT_TYPE_DISCONNECT:

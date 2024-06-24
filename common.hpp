@@ -1,6 +1,7 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+#include "ring_buffer.hpp"
 #include <chrono>
 #include <enet/enet.h>
 #include <iostream>
@@ -224,7 +225,12 @@ void send_timestamps(ENetPeer *peer, const RemoteTimestamps &remote_ts);
  * called by the client.
  */
 void handle_receive_event(ENetEvent &event, ENetPeer *peer,
-                          time_point &last_local_send, bool is_server);
+                          time_point &last_local_send,
+
+                          RingBuffer &clock_offset_rb,
+                          RingBuffer &travel_offset_rb,
+
+                          bool is_server);
 
 /**
  * @brief Log timestamps durations to stdout.

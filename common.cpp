@@ -79,7 +79,9 @@ void send_timestamps(ENetPeer *peer, const RemoteTimestamps &remote_ts) {
 }
 
 void handle_receive_event(ENetEvent &event, ENetPeer *peer,
-                          time_point &last_local_send, bool is_server) {
+                          time_point &last_local_send,
+                          RingBuffer &clock_offset_rb,
+                          RingBuffer &travel_offset_rb, bool is_server) {
 
   // Extract remote timestamps from received packet
   RemoteTimestamps remote_ts;
@@ -111,23 +113,31 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   // (A) Note: On the very first send out of the client, remote_receive equals
   // remote_send. Refer to process_client_events in client.cpp for details.
 
-  std::chrono::microseconds travel_time_offset;
+  std::chrono::microseconds raw_travel_time_offset;
   if (remote_ts.remote_receive != remote_ts.remote_send) {
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(1000)); // Simulate computation time
+        std::chrono::milliseconds(100)); // Simulate computation time
 
-    travel_time_offset = compute_travel_offset(
+    raw_travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
         local_receive, sign_correct_clock_offset);
 
   } else { // iteration 0
-    travel_time_offset = std::chrono::microseconds(0);
+    raw_travel_time_offset = std::chrono::microseconds(0);
     std::cout << "iteration 0\n";
   }
 
-  std::chrono::microseconds clock_offset = compute_clock_offset(
+  travel_offset_rb.add(raw_travel_time_offset);
+
+  std::chrono::microseconds travel_time_offset = travel_offset_rb.average();
+
+  std::chrono::microseconds raw_clock_offset = compute_clock_offset(
       last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
       local_receive, travel_time_offset);
+
+  clock_offset_rb.add(travel_time_offset);
+
+  std::chrono::microseconds clock_offset = clock_offset_rb.average();
 
   // Send timestamps back to client
   time_point local_send_time = get_current_time();
