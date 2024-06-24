@@ -10,10 +10,9 @@ std::chrono::microseconds compute_clock_offset(
     const time_point &remote_send, const time_point &local_receive,
     std::chrono::microseconds travel_offset, bool is_server) {
 
-  bool is_client = !is_server;
-
-  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
-                 ((is_client ? (-1) : 1) * travel_offset)) /
+  auto offset = ((is_server ? (-1) : 1) * ((remote_receive - local_send) -
+                                           (local_receive - remote_send)) -
+                 travel_offset) /
                 2;
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
@@ -24,11 +23,9 @@ std::chrono::microseconds compute_travel_offset(
     const time_point &remote_send, const time_point &local_receive,
     std::chrono::microseconds clock_offset, bool is_server) {
 
-  bool is_client = !is_server;
-
-  auto offset = (is_server ? (-1) : 1) *
-                ((remote_receive - local_send) - (local_receive - remote_send) -
-                 2 * clock_offset);
+  auto offset = (is_server ? (-1) : 1) * ((remote_receive - local_send) -
+                                          (local_receive - remote_send)) -
+                2 * clock_offset;
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
@@ -98,8 +95,6 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::cout << "Just received data with a local send time of "
             << duration_since_epoch.count() << "us \n";
 
-  auto sign_correct_clock_offset = remote_ts.clock_offset;
-
   // Calculate remote send time
   time_point local_receive = get_current_time();
 
@@ -124,7 +119,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
     raw_travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
-        local_receive, sign_correct_clock_offset, is_server);
+        local_receive, remote_ts.clock_offset, is_server);
 
   } else { // iteration 0
     raw_travel_time_offset = std::chrono::microseconds(0);

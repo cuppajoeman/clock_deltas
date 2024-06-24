@@ -78,12 +78,15 @@ if we had the other situation:
 -------------*----*------- local
             l2   l3
 
-stc = l2 - s2c(r2) = l2 - r2 - clock_offset
-cts = r3 - c2s(l3) = r3 - l3 + clock_offset
+stc = l2 - s2c(r2) = l2 - (r2 - clock_offset) = l2 - r2 + clock_offset
+cts = r3 - c2s(l3) = r3 - (l3 + clock_offset) = r3 - l3 - clock_offset
 
 notice how the clock offset's sign has flipped
 
 Since cts = stc + travel_offset, then
+
+
+REDO
 
 r3 - l3 + clock_offset = l2 - r2 - clock_offset + travel_offset
 
