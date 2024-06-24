@@ -13,7 +13,7 @@ std::chrono::microseconds compute_clock_offset(
   bool is_client = !is_server;
 
   auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
-                 (is_client ? (-1) : 1) * travel_offset) /
+                 ((is_client ? (-1) : 1) * travel_offset)) /
                 2;
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
@@ -26,8 +26,9 @@ std::chrono::microseconds compute_travel_offset(
 
   bool is_client = !is_server;
 
-  auto offset = (remote_receive - local_send) - (local_receive - remote_send) +
-                ((is_client ? (-2) : 2) * clock_offset);
+  auto offset =
+      (is_server ? (-1) : 1) * ((remote_receive - local_send) -
+                                (local_receive - remote_send) - clock_offset);
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
