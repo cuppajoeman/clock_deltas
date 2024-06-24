@@ -121,6 +121,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   } else { // iteration 0
     travel_time_offset = std::chrono::microseconds(0);
+    std::cout << "iteration 0\n";
   }
 
   std::chrono::microseconds clock_offset = compute_clock_offset(
