@@ -190,8 +190,10 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   enet_packet_destroy(event.packet);
 }
 
-void receive_log(const time_point &local_send, const time_point &remote_receive,
+void receive_log(const time_point &last_local_send,
+                 const time_point &remote_receive,
                  const time_point &remote_send, const time_point &local_receive,
+                 const time_point &local_send,
                  const time_point &expected_receive_time,
                  std::chrono::microseconds clock_offset,
                  std::chrono::microseconds travel_offset,
@@ -203,13 +205,15 @@ void receive_log(const time_point &local_send, const time_point &remote_receive,
   };
 
   std::cout << "From " << (is_server ? "Server" : "Client") << "POV: \n";
-  std::cout << "Local Send Time: " << duration(time_point{}, local_send)
-            << " us\n";
+  std::cout << "Last Local Send Time: "
+            << duration(time_point{}, last_local_send) << " us\n";
   std::cout << "Remote Receive Time: " << duration(time_point{}, remote_receive)
             << " us\n";
   std::cout << "Remote Send Time: " << duration(time_point{}, remote_send)
             << " us\n";
   std::cout << "Local Receive Time: " << duration(time_point{}, local_receive)
+            << " us\n";
+  std::cout << "Local Receive Time: " << duration(time_point{}, local_send)
             << " us\n";
   std::cout << "Computed Clock Offset: " << clock_offset.count() << " us\n";
   std::cout << "Computed Travel Offset: " << travel_offset.count() << " us\n";
