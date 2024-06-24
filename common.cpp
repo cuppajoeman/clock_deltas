@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include <chrono>
 #include <cstring>
+#include <ratio>
 
 time_point get_current_time() { return std::chrono::steady_clock::now(); }
 
@@ -72,7 +73,6 @@ ENetHost *initialize_enet_host(ENetAddress *address, size_t peer_count,
 }
 
 void send_timestamps(ENetPeer *peer, const RemoteTimestamps &remote_ts) {
-  std::cout << "Sending timestamps\n";
   ENetPacket *packet = enet_packet_create(&remote_ts, sizeof(remote_ts),
                                           ENET_PACKET_FLAG_RELIABLE);
   if (enet_peer_send(peer, 0, packet) < 0) {
@@ -86,6 +86,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   // Extract remote timestamps from received packet
   RemoteTimestamps remote_ts;
   std::memcpy(&remote_ts, event.packet->data, sizeof(remote_ts));
+
+  std::cout << "Just received data with a local send time of "
+            << remote_ts.remote_send.time_since_epoch().count() << "us \n";
 
   // Calculate remote send time
   time_point local_receive = get_current_time();
@@ -127,24 +130,25 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   time_point expected_receive_time = compute_expected_local_receive_time(
       local_send_time, remote_ts.remote_send, local_receive, clock_offset,
       travel_time_offset, is_server);
+
+  std::cout << "during this iteration we had the following information vvv";
+  receive_log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
+              local_receive, expected_receive_time, clock_offset,
+              travel_time_offset, is_server);
+
+  std::cout << "sending that information now";
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
                          clock_offset});
-
-  log_timestamps(last_local_send, remote_ts.remote_receive,
-                 remote_ts.remote_send, local_receive, expected_receive_time,
-                 clock_offset, travel_time_offset, is_server);
 
   // Cleanup packet
   enet_packet_destroy(event.packet);
 }
 
-void log_timestamps(const time_point &local_send,
-                    const time_point &remote_receive,
-                    const time_point &remote_send,
-                    const time_point &local_receive,
-                    const time_point &expected_receive_time,
-                    std::chrono::microseconds clock_offset,
-                    std::chrono::microseconds travel_offset, bool is_server) {
+void receive_log(const time_point &local_send, const time_point &remote_receive,
+                 const time_point &remote_send, const time_point &local_receive,
+                 const time_point &expected_receive_time,
+                 std::chrono::microseconds clock_offset,
+                 std::chrono::microseconds travel_offset, bool is_server) {
   auto duration = [](time_point start, time_point end) {
     return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
         .count();

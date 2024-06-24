@@ -236,12 +236,11 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
  * @param is_server true if this function is called by the server, false if
  * called by the client.
  */
-void log_timestamps(const time_point &local_send,
-                    const time_point &local_receive,
-                    const time_point &remote_send,
-                    const time_point &remote_receive,
-                    const time_point &expected_receive_time,
-                    std::chrono::microseconds clock_offset,
-                    std::chrono::microseconds travel_offset, bool is_server);
+void receive_log(const time_point &local_send, const time_point &local_receive,
+                 const time_point &remote_send,
+                 const time_point &remote_receive,
+                 const time_point &expected_receive_time,
+                 std::chrono::microseconds clock_offset,
+                 std::chrono::microseconds travel_offset, bool is_server);
 
 #endif // COMMON_HPP
