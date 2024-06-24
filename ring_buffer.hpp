@@ -9,6 +9,7 @@ public:
   RingBuffer(size_t size);
   void add(std::chrono::microseconds value);
   std::chrono::microseconds average() const;
+  void print_contents() const;
 
 private:
   size_t size_;
