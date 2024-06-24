@@ -115,7 +115,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::chrono::microseconds raw_travel_time_offset;
   if (remote_ts.remote_receive != remote_ts.remote_send) {
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(1000)); // Simulate computation time
+        std::chrono::milliseconds(100)); // Simulate computation time
 
     raw_travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
