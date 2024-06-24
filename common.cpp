@@ -81,7 +81,7 @@ void send_timestamps(ENetPeer *peer, const RemoteTimestamps &remote_ts) {
 }
 
 void handle_receive_event(ENetEvent &event, ENetPeer *peer,
-                          const time_point &last_local_send, bool is_server) {
+                          time_point &last_local_send, bool is_server) {
 
   // Extract remote timestamps from received packet
   RemoteTimestamps remote_ts;
@@ -143,6 +143,8 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::cout << "sending that information now";
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
                          clock_offset});
+
+  last_local_send = local_send_time;
 
   // Cleanup packet
   enet_packet_destroy(event.packet);
