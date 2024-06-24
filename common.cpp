@@ -37,13 +37,15 @@ std::chrono::microseconds compute_travel_offset(
 // }
 
 time_point compute_expected_local_receive_time(
-    const time_point &local_send, const time_point &remote_send,
-    const time_point &local_receive, std::chrono::microseconds clock_offset,
+    const time_point &local_send, RingBuffer &remote_to_local_travel_times,
+    std::chrono::microseconds clock_offset,
     std::chrono::microseconds travel_offset, bool is_server) {
 
-  auto send_time_from_remote_pov = local_send + clock_offset;
+  auto send_time_from_remote_pov =
+      local_send + (is_server ? -1 : 1) * clock_offset;
   auto travel_time_from_local_to_remote =
-      (local_receive - remote_send) + (clock_offset + travel_offset);
+      remote_to_local_travel_times.average() +
+      (is_server ? -1 : 1) * (travel_offset + clock_offset);
   auto expected_local_receive_time =
       send_time_from_remote_pov + travel_time_from_local_to_remote;
 
@@ -83,7 +85,9 @@ void send_timestamps(ENetPeer *peer, const RemoteTimestamps &remote_ts) {
 void handle_receive_event(ENetEvent &event, ENetPeer *peer,
                           time_point &last_local_send,
                           RingBuffer &clock_offset_rb,
-                          RingBuffer &travel_offset_rb, bool is_server) {
+                          RingBuffer &travel_offset_rb,
+                          RingBuffer &remote_to_local_travel_times,
+                          bool is_server) {
 
   // Extract remote timestamps from received packet
   RemoteTimestamps remote_ts;
@@ -149,6 +153,16 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
             << " without average: " << raw_clock_offset.count();
   std::chrono::microseconds clock_offset =
       use_average ? clock_offset_rb.average() : raw_clock_offset;
+
+  auto remote_to_local_travel_time =
+      // std::chrono::microseconds remote_to_local_travel_time =
+      (remote_ts.remote_send + (is_server ? 1 : (-1)) * clock_offset) -
+      local_receive;
+
+  std::chrono::microseconds x =
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          remote_to_local_travel_time);
+  remote_to_local_travel_times.add(x);
 
   // Send timestamps back to client
   time_point local_send_time = get_current_time();

@@ -22,6 +22,7 @@ void process_server_events(ENetHost *server) {
   int max_samples_to_average_over = 1000;
   RingBuffer clock_offset_rb(max_samples_to_average_over);
   RingBuffer travel_offset_rb(max_samples_to_average_over);
+  RingBuffer remote_to_local_travel_times(max_samples_to_average_over);
 
   // Note: Initial value of last_local_send is not the actual time of the last
   // local send on the server
@@ -41,7 +42,8 @@ void process_server_events(ENetHost *server) {
       case ENET_EVENT_TYPE_RECEIVE:
         std::cout << "got recieve event\n";
         handle_receive_event(event, event.peer, last_local_send,
-                             clock_offset_rb, travel_offset_rb, true);
+                             clock_offset_rb, travel_offset_rb,
+                             remote_to_local_travel_times, true);
         break;
 
       case ENET_EVENT_TYPE_DISCONNECT:

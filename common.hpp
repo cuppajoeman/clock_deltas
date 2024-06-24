@@ -252,10 +252,9 @@ void send_timestamps(ENetPeer *peer, const RemoteTimestamps &remote_ts);
  */
 void handle_receive_event(ENetEvent &event, ENetPeer *peer,
                           time_point &last_local_send,
-
                           RingBuffer &clock_offset_rb,
                           RingBuffer &travel_offset_rb,
-
+                          RingBuffer &remote_to_local_travel_times,
                           bool is_server);
 
 /**
