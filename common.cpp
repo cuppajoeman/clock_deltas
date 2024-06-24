@@ -39,11 +39,9 @@ time_point compute_expected_local_receive_time(
     const time_point &local_receive, std::chrono::microseconds clock_offset,
     std::chrono::microseconds travel_offset, bool is_server) {
 
-  auto send_time_from_remote_pov =
-      local_send + (is_server ? (-1) : 1) * clock_offset;
+  auto send_time_from_remote_pov = local_send + clock_offset;
   auto travel_time_from_local_to_remote =
-      (local_receive - remote_send) +
-      (is_server ? (-1) : 1) * (clock_offset + travel_offset);
+      (local_receive - remote_send) + (clock_offset + travel_offset);
   auto expected_local_receive_time =
       send_time_from_remote_pov + travel_time_from_local_to_remote;
 
