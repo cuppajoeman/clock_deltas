@@ -161,9 +161,16 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       (remote_ts.remote_receive -
        (last_local_send + (is_server ? -1 : 1) * clock_offset));
 
+  auto local_to_remote_travel_time_fixed =
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          local_to_remote_travel_time);
+
+  std::cout << "computed local to remote travel time: "
+            << local_to_remote_travel_time_fixed.count() << "\n";
+
   // the above may be negative with a big clock offset therefore we do:
-  auto abs_duration =
-      std::chrono::microseconds(std::abs(local_to_remote_travel_time.count()));
+  auto abs_duration = std::chrono::microseconds(
+      std::abs(local_to_remote_travel_time_fixed.count()));
   // std::chrono::microseconds(local_to_remote_travel_time.count());
   local_to_remote_travel_times.add(abs_duration);
 
