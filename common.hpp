@@ -272,6 +272,8 @@ void receive_log(const time_point &local_send, const time_point &local_receive,
                  const time_point &remote_receive,
                  const time_point &expected_receive_time,
                  std::chrono::microseconds clock_offset,
-                 std::chrono::microseconds travel_offset, bool is_server);
+                 std::chrono::microseconds travel_offset,
+                 std::chrono::microseconds average_remote_to_local_travel_time,
+                 bool is_server);
 
 #endif // COMMON_HPP

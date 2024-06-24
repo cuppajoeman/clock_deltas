@@ -174,7 +174,8 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::cout << "during this iteration we had the following information vvv";
   receive_log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
               local_receive, expected_receive_time, clock_offset,
-              travel_time_offset, is_server);
+              travel_time_offset, remote_to_local_travel_times.average(),
+              is_server);
 
   std::cout << "sending that information now";
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
@@ -190,7 +191,9 @@ void receive_log(const time_point &local_send, const time_point &remote_receive,
                  const time_point &remote_send, const time_point &local_receive,
                  const time_point &expected_receive_time,
                  std::chrono::microseconds clock_offset,
-                 std::chrono::microseconds travel_offset, bool is_server) {
+                 std::chrono::microseconds travel_offset,
+                 std::chrono::microseconds average_remote_to_local_travel_time,
+                 bool is_server) {
   auto duration = [](time_point start, time_point end) {
     return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
         .count();
@@ -207,6 +210,8 @@ void receive_log(const time_point &local_send, const time_point &remote_receive,
             << " us\n";
   std::cout << "Computed Clock Offset: " << clock_offset.count() << " us\n";
   std::cout << "Computed Travel Offset: " << travel_offset.count() << " us\n";
+  std::cout << "Average Remote to Local Travel Time: " << travel_offset.count()
+            << " us\n";
   std::cout << "Expected Receive Time: "
             << duration(time_point{}, expected_receive_time) << " us\n";
 }
