@@ -37,19 +37,15 @@ std::chrono::microseconds compute_travel_offset(
 // }
 
 time_point compute_expected_local_receive_time(
-    const time_point &local_send, RingBuffer &remote_to_local_travel_times,
+    const time_point &local_send, RingBuffer &local_to_remote_travel_times,
     std::chrono::microseconds clock_offset,
     std::chrono::microseconds travel_offset, bool is_server) {
 
   auto send_time_from_remote_pov =
       local_send + (is_server ? -1 : 1) * clock_offset;
 
-  auto travel_time_from_local_to_remote =
-      remote_to_local_travel_times.average() +
-      (is_server ? -1 : 1) * travel_offset;
-
   auto expected_local_receive_time =
-      send_time_from_remote_pov + travel_time_from_local_to_remote;
+      send_time_from_remote_pov + local_to_remote_travel_times.average();
 
   return expected_local_receive_time;
 }
@@ -163,8 +159,8 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   // the above may be negative with a big clock offset therefore we do:
   auto abs_duration =
-      // std::chrono::microseconds(std::abs(local_to_remote_travel_time.count()));
-      std::chrono::microseconds(local_to_remote_travel_time.count());
+      std::chrono::microseconds(std::abs(local_to_remote_travel_time.count()));
+  // std::chrono::microseconds(local_to_remote_travel_time.count());
   local_to_remote_travel_times.add(abs_duration);
 
   // Send timestamps back to client
@@ -213,7 +209,7 @@ void receive_log(const time_point &local_send, const time_point &remote_receive,
             << " us\n";
   std::cout << "Computed Clock Offset: " << clock_offset.count() << " us\n";
   std::cout << "Computed Travel Offset: " << travel_offset.count() << " us\n";
-  std::cout << "Average Remote to Local Travel Time: "
+  std::cout << "Average Local to Remote Travel Time: "
             << average_local_to_remote_travel_time.count() << " us\n";
   std::cout << "Expected Receive Time: "
             << duration(time_point{}, expected_receive_time) << " us\n";
