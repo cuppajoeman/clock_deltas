@@ -127,17 +127,20 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
     std::cout << "iteration 0\n";
   }
 
+  bool use_average = true;
+
   travel_offset_rb.add(raw_travel_time_offset);
 
-  std::chrono::microseconds travel_time_offset = travel_offset_rb.average();
+  std::chrono::microseconds travel_time_offset =
+      use_average ? travel_offset_rb.average() : raw_travel_time_offset;
 
   std::chrono::microseconds raw_clock_offset = compute_clock_offset(
       last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
       local_receive, travel_time_offset);
 
-  clock_offset_rb.add(travel_time_offset);
-
-  std::chrono::microseconds clock_offset = clock_offset_rb.average();
+  clock_offset_rb.add(raw_clock_offset);
+  std::chrono::microseconds clock_offset =
+      use_average ? clock_offset_rb.average() : raw_clock_offset;
 
   // Send timestamps back to client
   time_point local_send_time = get_current_time();
