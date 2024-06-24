@@ -176,9 +176,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   std::cout << "during this iteration we had the following information vvv";
   receive_log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
-              local_receive, expected_receive_time, clock_offset,
-              travel_time_offset, local_to_remote_travel_times.average(),
-              is_server);
+              local_receive, local_send_time, expected_receive_time,
+              clock_offset, travel_time_offset,
+              local_to_remote_travel_times.average(), is_server);
 
   std::cout << "sending that information now";
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
