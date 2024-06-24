@@ -23,7 +23,10 @@ std::chrono::microseconds RingBuffer::average() const {
   if (count == 0) {
     return std::chrono::microseconds(0); // Avoid division by zero
   }
-  return total_duration_ / count;
+  // Use signed arithmetic for the division
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+             total_duration_) /
+         count;
 }
 
 void RingBuffer::print_contents() const {
