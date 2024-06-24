@@ -8,10 +8,12 @@ time_point get_current_time() { return std::chrono::steady_clock::now(); }
 std::chrono::microseconds compute_clock_offset(
     const time_point &local_send, const time_point &remote_receive,
     const time_point &remote_send, const time_point &local_receive,
-    std::chrono::microseconds travel_offset) {
+    std::chrono::microseconds travel_offset, bool is_server) {
 
-  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) -
-                 travel_offset) /
+  bool is_client = !is_server;
+
+  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
+                 (is_client ? (-1) : 1) * travel_offset) /
                 2;
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
@@ -20,10 +22,12 @@ std::chrono::microseconds compute_clock_offset(
 std::chrono::microseconds compute_travel_offset(
     const time_point &local_send, const time_point &remote_receive,
     const time_point &remote_send, const time_point &local_receive,
-    std::chrono::microseconds clock_offset) {
+    std::chrono::microseconds clock_offset, bool is_server) {
 
-  auto offset = (remote_receive - local_send) - (local_receive - remote_send) -
-                (2 * clock_offset);
+  bool is_client = !is_server;
+
+  auto offset = (remote_receive - local_send) - (local_receive - remote_send) +
+                ((is_client ? (-2) : 2) * clock_offset);
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
@@ -117,11 +121,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
     std::this_thread::sleep_for(
         std::chrono::milliseconds(1000)); // Simulate computation time
 
-    raw_travel_time_offset =
-        (is_server ? (-1) : 1) *
-        compute_travel_offset(last_local_send, remote_ts.remote_receive,
-                              remote_ts.remote_send, local_receive,
-                              sign_correct_clock_offset);
+    raw_travel_time_offset = compute_travel_offset(
+        last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
+        local_receive, sign_correct_clock_offset, is_server);
 
   } else { // iteration 0
     raw_travel_time_offset = std::chrono::microseconds(0);

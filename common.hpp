@@ -89,6 +89,8 @@ r3 - l3 + clock_offset = l2 - r2 - clock_offset + travel_offset
 
 thus clock_offset = ((l2 - r2) - (r3 - l3) + travel_offset) / 2
 
+travel_offset = (r3 - l3) - (l2 - r2) + 2 clock_offset
+
 Note that in order to compute clock_offset or travel_offset we would need to
 know the other which leads to a cyclic depedency, so what can be done is to
 first assume that there is no travel_offset, in other words travel_offset = 0,
@@ -200,12 +202,12 @@ l1 and r1 are used to compute it
 std::chrono::microseconds compute_clock_offset(
     const time_point &local_send, const time_point &remote_receive,
     const time_point &remote_send, const time_point &local_receive,
-    std::chrono::microseconds travel_offset);
+    std::chrono::microseconds travel_offset, bool is_server);
 
 std::chrono::microseconds compute_travel_offset(
     const time_point &local_send, const time_point &remote_receive,
     const time_point &remote_send, const time_point &local_receive,
-    std::chrono::microseconds clock_offset);
+    std::chrono::microseconds clock_offset, bool is_server);
 
 /**
  * @brief Get the current time.
