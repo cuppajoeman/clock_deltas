@@ -93,8 +93,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::cout << "Just received data with a local send time of "
             << duration_since_epoch.count() << "us \n";
 
-  auto sign_correct_clock_offset =
-      remote_ts.clock_offset * (is_server ? (-1) : 1);
+  auto sign_correct_clock_offset = remote_ts.clock_offset;
 
   // Calculate remote send time
   time_point local_receive = get_current_time();
