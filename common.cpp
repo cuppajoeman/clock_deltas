@@ -119,7 +119,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
     raw_travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
-        local_receive, (is_server ? (-1) : 1) * sign_correct_clock_offset);
+        local_receive, sign_correct_clock_offset);
 
   } else { // iteration 0
     raw_travel_time_offset = std::chrono::microseconds(0);
