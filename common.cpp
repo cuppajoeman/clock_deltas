@@ -1,4 +1,5 @@
 #include "common.hpp"
+#include <chrono>
 #include <cstring>
 
 time_point get_current_time() { return std::chrono::steady_clock::now(); }
@@ -131,7 +132,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   log_timestamps(last_local_send, remote_ts.remote_receive,
                  remote_ts.remote_send, local_receive, expected_receive_time,
-                 is_server);
+                 clock_offset, travel_time_offset, is_server);
 
   // Cleanup packet
   enet_packet_destroy(event.packet);
@@ -141,7 +142,9 @@ void log_timestamps(const time_point &local_send,
                     const time_point &remote_receive,
                     const time_point &remote_send,
                     const time_point &local_receive,
-                    const time_point &expected_receive_time, bool is_server) {
+                    const time_point &expected_receive_time,
+                    std::chrono::microseconds clock_offset,
+                    std::chrono::microseconds travel_offset, bool is_server) {
   auto duration = [](time_point start, time_point end) {
     return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
         .count();
@@ -156,6 +159,8 @@ void log_timestamps(const time_point &local_send,
             << " us\n";
   std::cout << "Local Receive Time: " << duration(time_point{}, local_receive)
             << " us\n";
+  std::cout << "Computed Clock Offset: " << clock_offset.count() << " us\n";
+  std::cout << "Computed Travel Offset: " << travel_offset.count() << " us\n";
   std::cout << "Expected Receive Time: "
             << duration(time_point{}, expected_receive_time) << " us\n";
 }
