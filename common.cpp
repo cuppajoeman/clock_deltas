@@ -168,7 +168,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   time_point local_send_time = get_current_time();
 
   time_point expected_receive_time = compute_expected_local_receive_time(
-      local_send_time, remote_ts.remote_send, local_receive, clock_offset,
+      local_send_time, remote_to_local_travel_times, clock_offset,
       travel_time_offset, is_server);
 
   std::cout << "during this iteration we had the following information vvv";
