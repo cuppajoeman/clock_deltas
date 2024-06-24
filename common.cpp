@@ -162,6 +162,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::chrono::microseconds x =
       std::chrono::duration_cast<std::chrono::microseconds>(
           remote_to_local_travel_time);
+
   remote_to_local_travel_times.add(x);
 
   // Send timestamps back to client
@@ -210,8 +211,8 @@ void receive_log(const time_point &local_send, const time_point &remote_receive,
             << " us\n";
   std::cout << "Computed Clock Offset: " << clock_offset.count() << " us\n";
   std::cout << "Computed Travel Offset: " << travel_offset.count() << " us\n";
-  std::cout << "Average Remote to Local Travel Time: " << travel_offset.count()
-            << " us\n";
+  std::cout << "Average Remote to Local Travel Time: "
+            << average_remote_to_local_travel_time.count() << " us\n";
   std::cout << "Expected Receive Time: "
             << duration(time_point{}, expected_receive_time) << " us\n";
 }
