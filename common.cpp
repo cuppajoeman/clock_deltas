@@ -87,8 +87,11 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   RemoteTimestamps remote_ts;
   std::memcpy(&remote_ts, event.packet->data, sizeof(remote_ts));
 
+  auto duration_since_epoch =
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          remote_ts.remote_send.time_since_epoch());
   std::cout << "Just received data with a local send time of "
-            << remote_ts.remote_send.time_since_epoch().count() << "us \n";
+            << duration_since_epoch.count() << "us \n";
 
   // Calculate remote send time
   time_point local_receive = get_current_time();
