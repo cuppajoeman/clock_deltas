@@ -144,7 +144,8 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   clock_offset_rb.print_contents();
 
   std::cout << "clock offset with average: "
-            << clock_offset_rb.average().count()
+            << static_cast<long long>(clock_offset_rb.average().count())
+            // << clock_offset_rb.average().count()
             << " without average: " << raw_clock_offset.count();
   std::chrono::microseconds clock_offset =
       use_average ? clock_offset_rb.average() : raw_clock_offset;
