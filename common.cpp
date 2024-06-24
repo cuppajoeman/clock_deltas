@@ -144,7 +144,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       (is_server ? (-1) : 1) *
       compute_clock_offset(last_local_send, remote_ts.remote_receive,
                            remote_ts.remote_send, local_receive,
-                           travel_time_offset);
+                           travel_time_offset, is_server);
 
   clock_offset_rb.add(raw_clock_offset);
   clock_offset_rb.print_contents();
