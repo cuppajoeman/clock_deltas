@@ -109,7 +109,11 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
           prediction_accuracy);
 
   std::cout << "Prediction accuracy: " << prediction_accuracy_us.count()
-            << " microseconds" << std::endl;
+            << " microseconds "
+            << "real time: " << local_receive.time_since_epoch().count()
+            << " expected: "
+            << remote_ts.expected_local_receive_time.time_since_epoch().count()
+            << std::endl;
 
   // (A) Note: On the very first send out of the client, remote_receive equals
   // remote_send. Refer to process_client_events in client.cpp for details.
