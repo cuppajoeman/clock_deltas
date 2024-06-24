@@ -126,7 +126,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
     std::cout << "iteration 0\n";
   }
 
-  bool use_average = true;
+  bool use_average = false;
 
   travel_offset_rb.add(raw_travel_time_offset);
 
