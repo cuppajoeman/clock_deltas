@@ -254,7 +254,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
                           time_point &last_local_send,
                           RingBuffer &clock_offset_rb,
                           RingBuffer &travel_offset_rb,
-                          RingBuffer &remote_to_local_travel_times,
+                          RingBuffer &local_to_remote_travel_times,
                           bool is_server);
 
 /**
@@ -273,7 +273,7 @@ void receive_log(const time_point &local_send, const time_point &local_receive,
                  const time_point &expected_receive_time,
                  std::chrono::microseconds clock_offset,
                  std::chrono::microseconds travel_offset,
-                 std::chrono::microseconds average_remote_to_local_travel_time,
+                 std::chrono::microseconds average_local_to_remote_travel_time,
                  bool is_server);
 
 #endif // COMMON_HPP
