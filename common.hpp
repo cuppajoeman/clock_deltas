@@ -68,6 +68,27 @@ or we could isolate for travel_offset which is:
 
 travel_offset = (r1 - l1) - (l2 - r2) - (2 * clock_offset)
 
+if we had the other situation:
+
+       r2             r3
+-------*--------------*-- remote
+        \.           /
+          \.        /
+            \.     /
+-------------*----*------- local
+            l2   l3
+
+stc = l2 - s2c(r2) = l2 - r2 - clock_offset
+cts = r3 - c2s(l3) = r3 - l3 + clock_offset
+
+notice how the clock offset's sign has flipped
+
+Since cts = stc + travel_offset, then
+
+r3 - l3 + clock_offset = l2 - r2 - clock_offset + travel_offset
+
+thus clock_offset = ((l2 - r2) - (r3 - l3) + travel_offset) / 2
+
 Note that in order to compute clock_offset or travel_offset we would need to
 know the other which leads to a cyclic depedency, so what can be done is to
 first assume that there is no travel_offset, in other words travel_offset = 0,
