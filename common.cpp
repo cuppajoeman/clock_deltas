@@ -45,7 +45,7 @@ time_point compute_expected_local_receive_time(
       local_send + (is_server ? -1 : 1) * clock_offset;
   auto travel_time_from_local_to_remote =
       remote_to_local_travel_times.average() +
-      (is_server ? -1 : 1) * (travel_offset + clock_offset);
+      (is_server ? -1 : 1) * travel_offset;
   auto expected_local_receive_time =
       send_time_from_remote_pov + travel_time_from_local_to_remote;
 
@@ -160,7 +160,6 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
        (remote_ts.remote_send + (is_server ? 1 : (-1)) * clock_offset));
 
   // the above may be negative with a big clock offset therefore we do:
-
   auto abs_duration =
       std::chrono::microseconds(std::abs(remote_to_local_travel_time.count()));
   remote_to_local_travel_times.add(abs_duration);
