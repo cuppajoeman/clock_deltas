@@ -138,6 +138,40 @@ clock_offset_(2k + 1) and travel_offset_(2k + 1) for k in N_0
 therefore to improve accuracy you can send travel times and clock times and
 average it out.
 
+---
+
+recall that once you know the travel offset we have this equation
+
+
+cts = stc + travel_offset or stc = cts - travel_offset
+
+stc = (l2 - r2) + clock_offset
+
+cts = (r1 - l1) - clock_offset
+
+therefore
+
+cts = (l2 - r2) + (clock_offset + travel_offset)
+
+stc = (r1 - l1) - clock_offset - travel_offset = (r1 - l1) - (clock_offset +
+travel_offset)
+
+notice that the above equations are intuitively saying take the travel time for
+the other direction, and then add the offset to it and then apply the clock
+offset.
+
+with this information we can compute the expected arrival time of a packet we
+are about to send, consider r2, the expected arrival time is s2c(r2) + stc and
+l1 and r1 are used to compute it
+
+
+        r1   r2            r3
+--------*----*-------------*---*-------  ... remote
+       /      \.          /     \.
+      /         \.       /        \.
+     /            \.    /           \.
+----*--------------*---*-------------*-  ... local
+   l1              l2  l3            l4
 
  */
 

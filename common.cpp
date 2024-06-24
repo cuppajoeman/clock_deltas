@@ -26,6 +26,29 @@ std::chrono::microseconds compute_travel_offset(
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
 
+// std::chrono::microseconds client_to_server_time(const time_point
+// &client_time, std::chrono::microseconds clock_offset) {
+//   auto server_time = client_time + clock_offset;
+//   return std::chrono::duration_cast<std::chrono::microseconds>(server_time);
+// }
+
+std::chrono::microseconds compute_expected_local_receive_time(
+    const time_point &local_send, const time_point &remote_send,
+    const time_point &local_receive, std::chrono::microseconds clock_offset,
+    std::chrono::microseconds travel_offset, bool is_server) {
+
+  auto send_time_from_remote_pov =
+      local_send + (is_server ? (-1) : 1) * clock_offset;
+  auto travel_time_from_local_to_remote =
+      (local_receive - remote_send) +
+      (is_server ? (-1) : 1) * (clock_offset + travel_offset);
+  auto expected_local_receive_time =
+      send_time_from_remote_pov + travel_time_from_local_to_remote;
+
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+      expected_local_receive_time.time_since_epoch());
+}
+
 ENetHost *initialize_enet_host(ENetAddress *address, size_t peer_count,
                                enet_uint16 port) {
   if (enet_initialize() != 0) {
