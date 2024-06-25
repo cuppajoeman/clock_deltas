@@ -24,6 +24,8 @@ std::chrono::microseconds compute_travel_offset(
     const time_point &remote_send, const time_point &local_receive,
     std::chrono::microseconds clock_offset, bool is_server) {
 
+  std::chrono::microseconds abs_ctstt_us;
+  std::chrono::microseconds abs_stctt_us;
   if (is_server) {
     auto client_to_server_travel_time =
         local_receive - remote_send - clock_offset;
@@ -33,8 +35,8 @@ std::chrono::microseconds compute_travel_offset(
         client_to_server_travel_time);
     auto stctt_us = std::chrono::duration_cast<std::chrono::microseconds>(
         server_to_client_travel_time);
-    auto abs_ctstt_us = std::chrono::microseconds(std::abs(ctstt_us.count()));
-    auto abs_stctt_us = std::chrono::microseconds(std::abs(stctt_us.count()));
+    abs_ctstt_us = std::chrono::microseconds(std::abs(ctstt_us.count()));
+    abs_stctt_us = std::chrono::microseconds(std::abs(stctt_us.count()));
     print_microseconds("---- client to server travel time", abs_ctstt_us);
     print_microseconds("---- server to client travel time", abs_stctt_us);
   } else {
@@ -46,16 +48,15 @@ std::chrono::microseconds compute_travel_offset(
         client_to_server_travel_time);
     auto stctt_us = std::chrono::duration_cast<std::chrono::microseconds>(
         server_to_client_travel_time);
-    auto abs_ctstt_us = std::chrono::microseconds(std::abs(ctstt_us.count()));
-    auto abs_stctt_us = std::chrono::microseconds(std::abs(stctt_us.count()));
+    abs_ctstt_us = std::chrono::microseconds(std::abs(ctstt_us.count()));
+    abs_stctt_us = std::chrono::microseconds(std::abs(stctt_us.count()));
     print_microseconds("---- client to server travel time", abs_ctstt_us);
     print_microseconds("---- server to client travel time", abs_stctt_us);
   }
 
-  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
-                 (is_server ? -1 : 1) * 2 * clock_offset);
+  std::chrono::microseconds offset = abs_ctstt_us - abs_stctt_us;
 
-  return std::chrono::duration_cast<std::chrono::microseconds>(offset);
+  return offset;
 }
 
 // std::chrono::microseconds client_to_server_time(const time_point
