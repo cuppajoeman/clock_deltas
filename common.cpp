@@ -4,6 +4,22 @@
 #include <iomanip> // for std::setprecision
 #include <ratio>
 
+// Function to print hours, minutes, and seconds directly from microseconds
+void print_us_to_hms(const std::string &label, std::chrono::microseconds us) {
+  // Convert microseconds to seconds
+  auto total_seconds =
+      std::chrono::duration_cast<std::chrono::seconds>(us).count();
+
+  // Calculate hours, minutes, and remaining seconds
+  int hours = total_seconds / 3600;
+  total_seconds %= 3600;
+  int minutes = total_seconds / 60;
+  int seconds = total_seconds % 60;
+
+  std::cout << label << " - " << hours << "h " << minutes << "m " << seconds
+            << "s\n";
+}
+
 time_point get_current_time() { return std::chrono::steady_clock::now(); }
 
 std::chrono::microseconds compute_clock_offset(
@@ -181,6 +197,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       local_receive, travel_time_offset, is_server);
 
   print_microseconds("computed clock offset", raw_clock_offset);
+  print_us_to_hms("clock offset readable", raw_clock_offset);
 
   std::cout << "\n-------------------computing clock_offset\n";
 
