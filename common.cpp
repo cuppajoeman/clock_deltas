@@ -196,9 +196,15 @@ void print_time(const std::string &label, const time_point &tp) {
       tp.time_since_epoch());
   auto duration_sec =
       std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+  auto seconds = std::chrono::duration<double>(tp.time_since_epoch());
 
-  std::cout << label << " - microseconds: " << duration_us.count() << " us, "
-            << "seconds: " << duration_sec.count() << " s\n";
+  std::cout << label << " - microseconds: " << duration_us.count() << " us, ";
+  if (duration_sec.count() > 0) {
+    std::cout << "seconds: " << std::fixed << std::setprecision(6)
+              << seconds.count() << " s\n";
+  } else {
+    std::cout << "seconds: " << duration_sec.count() << " s\n";
+  }
 }
 
 // Helper function to print microseconds duration with decimal seconds if less
