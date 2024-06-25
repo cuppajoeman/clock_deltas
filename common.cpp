@@ -87,6 +87,8 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
                           RingBuffer &local_to_remote_travel_times,
                           bool is_server) {
 
+  std::cout << "\n===================\n";
+
   // Extract remote timestamps from received packet
   RemoteTimestamps remote_ts;
   std::memcpy(&remote_ts, event.packet->data, sizeof(remote_ts));
