@@ -91,12 +91,6 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   RemoteTimestamps remote_ts;
   std::memcpy(&remote_ts, event.packet->data, sizeof(remote_ts));
 
-  auto duration_since_epoch =
-      std::chrono::duration_cast<std::chrono::microseconds>(
-          remote_ts.remote_send.time_since_epoch());
-  std::cout << "Just received data with a local send time of "
-            << duration_since_epoch.count() << "us \n";
-
   // Calculate remote send time
   time_point local_receive = get_current_time();
 
@@ -108,12 +102,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       std::chrono::duration_cast<std::chrono::microseconds>(
           prediction_accuracy);
 
-  std::cout << "Prediction accuracy: " << prediction_accuracy_us.count()
-            << " microseconds "
-            << "real time: " << local_receive.time_since_epoch().count()
-            << " expected: "
-            << remote_ts.expected_local_receive_time.time_since_epoch().count()
-            << std::endl;
+  print_microseconds("prediction accuracy", prediction_accuracy_us);
+  print_time("real receive time    ", local_receive);
+  print_time("expected receive time", local_receive);
 
   // (A) Note: On the very first send out of the client, remote_receive equals
   // remote_send. Refer to process_client_events in client.cpp for details.
@@ -182,10 +173,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       travel_time_offset, is_server);
 
   std::cout << "during this iteration we had the following information vvv";
-  receive_log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
-              local_receive, local_send_time, expected_receive_time,
-              clock_offset, travel_time_offset,
-              local_to_remote_travel_times.average(), is_server);
+  log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
+      local_receive, local_send_time, expected_receive_time, clock_offset,
+      travel_time_offset, local_to_remote_travel_times.average(), is_server);
 
   std::cout << "sending that information now";
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
@@ -197,35 +187,56 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   enet_packet_destroy(event.packet);
 }
 
-void receive_log(const time_point &last_local_send,
-                 const time_point &remote_receive,
-                 const time_point &remote_send, const time_point &local_receive,
-                 const time_point &local_send,
-                 const time_point &expected_receive_time,
-                 std::chrono::microseconds clock_offset,
-                 std::chrono::microseconds travel_offset,
-                 std::chrono::microseconds average_local_to_remote_travel_time,
-                 bool is_server) {
-  auto duration = [](time_point start, time_point end) {
-    return std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-        .count();
-  };
+// Helper function to print time in microseconds and seconds
+void print_time(const std::string &label,
+                const std::chrono::time_point<std::chrono::system_clock> &tp) {
+  auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(
+      tp.time_since_epoch());
+  auto duration_sec =
+      std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
 
-  std::cout << "From " << (is_server ? "Server" : "Client") << "POV: \n";
-  std::cout << "Last Local Send Time: "
-            << duration(time_point{}, last_local_send) << " us\n";
-  std::cout << "Remote Receive Time: " << duration(time_point{}, remote_receive)
-            << " us\n";
-  std::cout << "Remote Send Time: " << duration(time_point{}, remote_send)
-            << " us\n";
-  std::cout << "Local Receive Time: " << duration(time_point{}, local_receive)
-            << " us\n";
-  std::cout << "Local Receive Time: " << duration(time_point{}, local_send)
-            << " us\n";
-  std::cout << "Computed Clock Offset: " << clock_offset.count() << " us\n";
-  std::cout << "Computed Travel Offset: " << travel_offset.count() << " us\n";
-  std::cout << "Average Local to Remote Travel Time: "
-            << average_local_to_remote_travel_time.count() << " us\n";
-  std::cout << "Expected Receive Time: "
-            << duration(time_point{}, expected_receive_time) << " us\n";
+  std::cout << label << " - microseconds: " << duration_us.count() << " us, "
+            << "seconds: " << duration_sec.count() << " s\n";
+}
+
+// Helper function to print microseconds duration
+void print_microseconds(const std::string &label,
+                        std::chrono::microseconds us) {
+  std::cout << label << " - microseconds: " << us.count() << " us, "
+            << "seconds: "
+            << std::chrono::duration_cast<std::chrono::seconds>(us).count()
+            << " s\n";
+}
+
+// Function to log various timestamps
+void log(
+    const std::chrono::time_point<std::chrono::system_clock> &remote_receive,
+    const std::chrono::time_point<std::chrono::system_clock> &remote_send,
+    const std::chrono::time_point<std::chrono::system_clock> &local_receive,
+    const std::chrono::time_point<std::chrono::system_clock> &local_send,
+    const std::chrono::time_point<std::chrono::system_clock>
+        &expected_receive_time,
+    std::chrono::microseconds clock_offset,
+    std::chrono::microseconds travel_offset,
+    std::chrono::microseconds average_local_to_remote_travel_time,
+    bool is_server) {
+
+  std::cout << "From " << (is_server ? "Server" : "Client") << " POV:\n";
+  std::cout << "Remote receive time:\n";
+  print_time("  ", remote_receive);
+  std::cout << "Remote send time:\n";
+  print_time("  ", remote_send);
+  std::cout << "Local receive time:\n";
+  print_time("  ", local_receive);
+  std::cout << "Local send time:\n";
+  print_time("  ", local_send);
+  std::cout << "Expected receive time:\n";
+  print_time("  ", expected_receive_time);
+
+  std::cout << "Computed clock offset:\n";
+  print_microseconds("  ", clock_offset);
+  std::cout << "Computed travel offset:\n";
+  print_microseconds("  ", travel_offset);
+  std::cout << "Average local to remote travel time:\n";
+  print_microseconds("  ", average_local_to_remote_travel_time);
 }

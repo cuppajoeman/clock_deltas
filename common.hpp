@@ -267,13 +267,17 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
  * @param is_server true if this function is called by the server, false if
  * called by the client.
  */
-void receive_log(const time_point &last_local_send,
-                 const time_point &local_receive, const time_point &remote_send,
-                 const time_point &remote_receive, const time_point &local_send,
-                 const time_point &expected_receive_time,
-                 std::chrono::microseconds clock_offset,
-                 std::chrono::microseconds travel_offset,
-                 std::chrono::microseconds average_local_to_remote_travel_time,
-                 bool is_server);
+void log(const time_point &last_local_send, const time_point &local_receive,
+         const time_point &remote_send, const time_point &remote_receive,
+         const time_point &local_send, const time_point &expected_receive_time,
+         std::chrono::microseconds clock_offset,
+         std::chrono::microseconds travel_offset,
+         std::chrono::microseconds average_local_to_remote_travel_time,
+         bool is_server);
+
+void print_time(const std::string &label, const time_point &tp);
+
+// Helper function to print microseconds duration
+void print_microseconds(const std::string &label, std::chrono::microseconds us);
 
 #endif // COMMON_HPP
