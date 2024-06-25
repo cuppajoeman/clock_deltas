@@ -223,8 +223,8 @@ void print_microseconds(const std::string &label,
 }
 
 // Function to log various timestamps
-void log(const time_point &last_local_send, const time_point &local_receive,
-         const time_point &remote_send, const time_point &remote_receive,
+void log(const time_point &last_local_send, const time_point &remote_receive,
+         const time_point &remote_send, const time_point &local_receive,
          const time_point &local_send, const time_point &expected_receive_time,
          std::chrono::microseconds clock_offset,
          std::chrono::microseconds travel_offset,
@@ -233,7 +233,7 @@ void log(const time_point &last_local_send, const time_point &local_receive,
 
   std::cout << "From " << (is_server ? "Server" : "Client") << " POV:\n";
   std::cout << "Local send time:\n";
-  print_time("  ", local_send);
+  print_time("  ", last_local_send);
   std::cout << "Remote receive time:\n";
   print_time("  ", remote_receive);
   std::cout << "Remote send time:\n";
