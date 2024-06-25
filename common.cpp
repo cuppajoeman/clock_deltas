@@ -1,6 +1,7 @@
 #include "common.hpp"
 #include <chrono>
 #include <cstring>
+#include <iomanip> // for std::setprecision
 #include <ratio>
 
 time_point get_current_time() { return std::chrono::steady_clock::now(); }
@@ -104,9 +105,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       std::chrono::duration_cast<std::chrono::microseconds>(
           prediction_accuracy);
 
-  print_microseconds("prediction accuracy", prediction_accuracy_us);
   print_time("real receive time    ", local_receive);
   print_time("expected receive time", remote_ts.expected_local_receive_time);
+  print_microseconds("prediction accuracy  ", prediction_accuracy_us);
 
   // (A) Note: On the very first send out of the client, remote_receive equals
   // remote_send. Refer to process_client_events in client.cpp for details.
@@ -200,13 +201,19 @@ void print_time(const std::string &label, const time_point &tp) {
             << "seconds: " << duration_sec.count() << " s\n";
 }
 
-// Helper function to print microseconds duration
+// Helper function to print microseconds duration with decimal seconds if less
+// than 1 second
 void print_microseconds(const std::string &label,
                         std::chrono::microseconds us) {
-  std::cout << label << " - microseconds: " << us.count() << " us, "
-            << "seconds: "
-            << std::chrono::duration_cast<std::chrono::seconds>(us).count()
-            << " s\n";
+  auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(us);
+
+  std::cout << label << " - microseconds: " << us.count() << " us, ";
+  if (us < std::chrono::seconds(1)) {
+    std::cout << "seconds: " << std::fixed << std::setprecision(6)
+              << seconds.count() << " s\n";
+  } else {
+    std::cout << "seconds: " << seconds.count() << " s\n";
+  }
 }
 
 // Function to log various timestamps
