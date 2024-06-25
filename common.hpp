@@ -7,7 +7,7 @@
 #include <iostream>
 #include <thread>
 
-using time_point = std::chrono::steady_clock::time_point;
+using time_point = std::chrono::system_clock::time_point;
 
 struct RemoteTimestamps {
   time_point remote_receive;

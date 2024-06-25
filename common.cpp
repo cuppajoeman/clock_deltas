@@ -20,7 +20,7 @@ void print_us_to_hms(const std::string &label, std::chrono::microseconds us) {
             << "s\n";
 }
 
-time_point get_current_time() { return std::chrono::steady_clock::now(); }
+time_point get_current_time() { return std::chrono::system_clock::now(); }
 
 std::chrono::microseconds compute_clock_offset(
     const time_point &local_send, const time_point &remote_receive,
