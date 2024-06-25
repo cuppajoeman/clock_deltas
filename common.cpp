@@ -33,8 +33,10 @@ std::chrono::microseconds compute_travel_offset(
         client_to_server_travel_time);
     auto stctt_us = std::chrono::duration_cast<std::chrono::microseconds>(
         server_to_client_travel_time);
-    print_microseconds("---- client to server travel time", ctstt_us);
-    print_microseconds("---- server to client travel time", stctt_us);
+    auto abs_ctstt_us = std::chrono::microseconds(std::abs(ctstt_us.count()));
+    auto abs_stctt_us = std::chrono::microseconds(std::abs(stctt_us.count()));
+    print_microseconds("---- client to server travel time", abs_ctstt_us);
+    print_microseconds("---- server to client travel time", abs_stctt_us);
   } else {
     auto client_to_server_travel_time =
         local_receive - remote_send + clock_offset;
@@ -44,8 +46,10 @@ std::chrono::microseconds compute_travel_offset(
         client_to_server_travel_time);
     auto stctt_us = std::chrono::duration_cast<std::chrono::microseconds>(
         server_to_client_travel_time);
-    print_microseconds("---- client to server travel time", ctstt_us);
-    print_microseconds("---- server to client travel time", stctt_us);
+    auto abs_ctstt_us = std::chrono::microseconds(std::abs(ctstt_us.count()));
+    auto abs_stctt_us = std::chrono::microseconds(std::abs(stctt_us.count()));
+    print_microseconds("---- client to server travel time", abs_ctstt_us);
+    print_microseconds("---- server to client travel time", abs_stctt_us);
   }
 
   auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
@@ -138,7 +142,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::chrono::microseconds raw_travel_time_offset;
   if (remote_ts.remote_receive != remote_ts.remote_send) {
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(10)); // Simulate computation time
+        std::chrono::milliseconds(1000)); // Simulate computation time
 
     std::cout << "\n-------------------computing travel time\n";
     print_time("last local send", last_local_send);
