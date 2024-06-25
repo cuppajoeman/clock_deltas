@@ -232,14 +232,14 @@ void log(const time_point &last_local_send, const time_point &local_receive,
          bool is_server) {
 
   std::cout << "From " << (is_server ? "Server" : "Client") << " POV:\n";
+  std::cout << "Local send time:\n";
+  print_time("  ", local_send);
   std::cout << "Remote receive time:\n";
   print_time("  ", remote_receive);
   std::cout << "Remote send time:\n";
   print_time("  ", remote_send);
   std::cout << "Local receive time:\n";
   print_time("  ", local_receive);
-  std::cout << "Local send time:\n";
-  print_time("  ", local_send);
   std::cout << "Expected receive time:\n";
   print_time("  ", expected_receive_time);
 
