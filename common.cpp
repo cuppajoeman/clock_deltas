@@ -188,8 +188,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 }
 
 // Helper function to print time in microseconds and seconds
-void print_time(const std::string &label,
-                const std::chrono::time_point<std::chrono::system_clock> &tp) {
+void print_time(const std::string &label, const time_point &tp) {
   auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(
       tp.time_since_epoch());
   auto duration_sec =
