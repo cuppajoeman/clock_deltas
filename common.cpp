@@ -131,6 +131,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   print_time("remote receive", remote_ts.remote_receive);
   print_time("remote send", remote_ts.remote_send);
   print_time("local receive", local_receive);
+  print_microseconds("clock offset", remote_ts.clock_offset);
   print_microseconds("raw travel time offset", raw_travel_time_offset);
   std::cout << "\n-------------------\n";
 
