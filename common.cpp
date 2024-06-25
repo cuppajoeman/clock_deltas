@@ -34,7 +34,7 @@ std::chrono::microseconds compute_travel_offset(
     auto stctt_us = std::chrono::duration_cast<std::chrono::microseconds>(
         server_to_client_travel_time);
     print_microseconds("---- client to server travel time", ctstt_us);
-    print_microseconds("---- server to client travel time", ctstt_us);
+    print_microseconds("---- server to client travel time", stctt_us);
   } else {
     auto client_to_server_travel_time =
         local_receive - remote_send - clock_offset;
@@ -45,7 +45,7 @@ std::chrono::microseconds compute_travel_offset(
     auto stctt_us = std::chrono::duration_cast<std::chrono::microseconds>(
         server_to_client_travel_time);
     print_microseconds("---- client to server travel time", ctstt_us);
-    print_microseconds("---- server to client travel time", ctstt_us);
+    print_microseconds("---- server to client travel time", stctt_us);
   }
 
   auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
@@ -138,9 +138,9 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
   std::chrono::microseconds raw_travel_time_offset;
   if (remote_ts.remote_receive != remote_ts.remote_send) {
     std::this_thread::sleep_for(
-        std::chrono::milliseconds(10)); // Simulate computation time
+        std::chrono::milliseconds(1000)); // Simulate computation time
 
-    std::cout << "\n-------------------\n";
+    std::cout << "\n-------------------computing travel time\n";
     print_time("last local send", last_local_send);
     print_time("remote receive ", remote_ts.remote_receive);
     print_time("remote send    ", remote_ts.remote_send);
@@ -152,7 +152,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
         local_receive, remote_ts.clock_offset, is_server);
 
     print_microseconds("raw travel time offset", raw_travel_time_offset);
-    std::cout << "\n-------------------\n";
+    std::cout << "\n-------------------computing travel time\n";
 
   } else { // iteration 0
     raw_travel_time_offset = std::chrono::microseconds(0);
@@ -163,23 +163,29 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   travel_offset_rb.add(raw_travel_time_offset);
   // travel_offset_rb.print_contents();
-  std::cout << "travel offset with average: "
-            << travel_offset_rb.average().count()
-            << " without average: " << raw_travel_time_offset.count();
+  // std::cout << "travel offset with average: "
+  //           << travel_offset_rb.average().count()
+  //           << " without average: " << raw_travel_time_offset.count();
   std::chrono::microseconds travel_time_offset =
       use_average ? travel_offset_rb.average() : raw_travel_time_offset;
+
+  std::cout << "\n-------------------computing clock_offset\n";
 
   std::chrono::microseconds raw_clock_offset = compute_clock_offset(
       last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
       local_receive, travel_time_offset, is_server);
 
+  print_microseconds("computed clock offset", raw_clock_offset);
+
+  std::cout << "\n-------------------computing clock_offset\n";
+
   clock_offset_rb.add(raw_clock_offset);
   // clock_offset_rb.print_contents();
 
-  std::cout << "clock offset with average: "
-            << static_cast<long long>(clock_offset_rb.average().count())
-            // << clock_offset_rb.average().count()
-            << " without average: " << raw_clock_offset.count();
+  // std::cout << "clock offset with average: "
+  //           << static_cast<long long>(clock_offset_rb.average().count())
+  //           // << clock_offset_rb.average().count()
+  //           << " without average: " << raw_clock_offset.count();
   std::chrono::microseconds clock_offset =
       use_average ? clock_offset_rb.average() : raw_clock_offset;
 
@@ -208,12 +214,12 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       local_send_time, local_to_remote_travel_times, clock_offset,
       travel_time_offset, is_server);
 
-  std::cout << "during this iteration we had the following information vvv";
-  log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
-      local_receive, local_send_time, expected_receive_time, clock_offset,
-      travel_time_offset, local_to_remote_travel_times.average(), is_server);
+  // std::cout << "during this iteration we had the following information vvv";
+  // log(last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
+  //     local_receive, local_send_time, expected_receive_time, clock_offset,
+  //     travel_time_offset, local_to_remote_travel_times.average(), is_server);
 
-  std::cout << "sending that information now";
+  // std::cout << "sending that information now";
   send_timestamps(peer, {local_receive, local_send_time, expected_receive_time,
                          clock_offset});
 
