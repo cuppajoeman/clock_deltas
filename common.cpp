@@ -11,9 +11,8 @@ std::chrono::microseconds compute_clock_offset(
     const time_point &remote_send, const time_point &local_receive,
     std::chrono::microseconds travel_offset, bool is_server) {
 
-  auto offset = ((is_server ? (-1) : 1) * ((remote_receive - local_send) -
-                                           (local_receive - remote_send)) -
-                 travel_offset) /
+  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) -
+                 (is_server ? -1 : 1) * travel_offset) /
                 2;
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
@@ -24,9 +23,12 @@ std::chrono::microseconds compute_travel_offset(
     const time_point &remote_send, const time_point &local_receive,
     std::chrono::microseconds clock_offset, bool is_server) {
 
-  auto offset = (is_server ? (-1) : 1) * ((remote_receive - local_send) -
-                                          (local_receive - remote_send)) -
-                2 * clock_offset;
+  auto del_one = remote_receive - local_send;
+  auto del_two = local_receive - remote_send;
+
+  auto offset = (is_server ? (-1) : 1) *
+                ((remote_receive - local_send) - (local_receive - remote_send) -
+                 2 * clock_offset);
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
@@ -117,23 +119,24 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
     std::this_thread::sleep_for(
         std::chrono::milliseconds(10)); // Simulate computation time
 
+    std::cout << "\n-------------------\n";
+    print_time("last local send", last_local_send);
+    print_time("remote receive ", remote_ts.remote_receive);
+    print_time("remote send    ", remote_ts.remote_send);
+    print_time("local receive  ", local_receive);
+    print_microseconds("clock offset          ", remote_ts.clock_offset);
+
     raw_travel_time_offset = compute_travel_offset(
         last_local_send, remote_ts.remote_receive, remote_ts.remote_send,
         local_receive, remote_ts.clock_offset, is_server);
+
+    print_microseconds("raw travel time offset", raw_travel_time_offset);
+    std::cout << "\n-------------------\n";
 
   } else { // iteration 0
     raw_travel_time_offset = std::chrono::microseconds(0);
     std::cout << "iteration 0\n";
   }
-
-  std::cout << "\n-------------------\n";
-  print_time("last local send", last_local_send);
-  print_time("remote receive ", remote_ts.remote_receive);
-  print_time("remote send    ", remote_ts.remote_send);
-  print_time("local receive  ", local_receive);
-  print_microseconds("clock offset          ", remote_ts.clock_offset);
-  print_microseconds("raw travel time offset", raw_travel_time_offset);
-  std::cout << "\n-------------------\n";
 
   bool use_average = true;
 
