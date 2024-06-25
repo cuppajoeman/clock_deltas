@@ -11,9 +11,10 @@ std::chrono::microseconds compute_clock_offset(
     const time_point &remote_send, const time_point &local_receive,
     std::chrono::microseconds travel_offset, bool is_server) {
 
-  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) -
-                 (is_server ? -1 : 1) * travel_offset) /
-                2;
+  auto offset =
+      (is_server ? -1 : 1) * (((remote_receive - local_send) -
+                               (local_receive - remote_send) + travel_offset) /
+                              2);
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
@@ -26,9 +27,8 @@ std::chrono::microseconds compute_travel_offset(
   auto del_one = remote_receive - local_send;
   auto del_two = local_receive - remote_send;
 
-  auto offset = (is_server ? (-1) : 1) *
-                ((remote_receive - local_send) - (local_receive - remote_send) -
-                 2 * clock_offset);
+  auto offset = ((remote_receive - local_send) - (local_receive - remote_send) +
+                 (is_server ? -1 : 1) * 2 * clock_offset);
 
   return std::chrono::duration_cast<std::chrono::microseconds>(offset);
 }
