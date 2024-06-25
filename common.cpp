@@ -106,7 +106,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
 
   print_microseconds("prediction accuracy", prediction_accuracy_us);
   print_time("real receive time    ", local_receive);
-  print_time("expected receive time", local_receive);
+  print_time("expected receive time", remote_ts.expected_local_receive_time);
 
   // (A) Note: On the very first send out of the client, remote_receive equals
   // remote_send. Refer to process_client_events in client.cpp for details.
