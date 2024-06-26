@@ -4,8 +4,8 @@
 #include <iomanip> // for std::setprecision
 #include <ratio>
 
-// Function to print hours, minutes, and seconds directly from microseconds
-void print_us_to_hms(const std::string &label, std::chrono::microseconds us) {
+void print_us_to_hms_ms(const std::string &label,
+                        std::chrono::microseconds us) {
   // Convert microseconds to seconds
   auto total_seconds =
       std::chrono::duration_cast<std::chrono::seconds>(us).count();
@@ -16,8 +16,12 @@ void print_us_to_hms(const std::string &label, std::chrono::microseconds us) {
   int minutes = total_seconds / 60;
   int seconds = total_seconds % 60;
 
+  // Calculate remaining microseconds and convert to milliseconds
+  auto remaining_us = us.count() % 1000000;
+  auto milliseconds = remaining_us / 1000;
+
   std::cout << label << " - " << hours << "h " << minutes << "m " << seconds
-            << "s\n";
+            << "s " << milliseconds << "ms\n";
 }
 
 time_point get_current_time() { return std::chrono::system_clock::now(); }
@@ -197,7 +201,7 @@ void handle_receive_event(ENetEvent &event, ENetPeer *peer,
       local_receive, travel_time_offset, is_server);
 
   print_microseconds("computed clock offset", raw_clock_offset);
-  print_us_to_hms("clock offset readable", raw_clock_offset);
+  print_us_to_hms_ms("clock offset readable", raw_clock_offset);
 
   std::cout << "\n-------------------computing clock_offset\n";
 
@@ -268,14 +272,15 @@ void print_time(const std::string &label, const time_point &tp) {
   }
 }
 
-// Helper function to print microseconds duration with decimal seconds if less
-// than 1 second
 void print_microseconds(const std::string &label,
                         std::chrono::microseconds us) {
   auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(us);
+  auto milliseconds =
+      std::chrono::duration_cast<std::chrono::milliseconds>(us).count();
 
   std::cout << label << " - microseconds: " << us.count() << " us, ";
   if (us < std::chrono::seconds(1)) {
+    std::cout << "milliseconds: " << milliseconds << " ms, ";
     std::cout << "seconds: " << std::fixed << std::setprecision(6)
               << seconds.count() << " s\n";
   } else {
