@@ -150,22 +150,39 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
       switch (event.type) {
       case ENET_EVENT_TYPE_RECEIVE: {
         if (event.packet->dataLength == sizeof(uint64_t) * 2) {
+          uint64_t t4 = get_time_in_ms();
           uint64_t response_times[2];
           std::memcpy(response_times, event.packet->data,
                       sizeof(response_times));
           uint64_t t2 = response_times[0];
           uint64_t t3 = response_times[1];
 
-          uint64_t local_time = get_time_in_ms();
-          int64_t delta = ((t2 - t1) + (t3 - local_time)) / 2;
-          rtt_to_clock_delta[event.peer->incomingPeerID] = delta;
+          std::cout << "Received packet with T2: " << t2 << " ms, T3: " << t3
+                    << " ms" << std::endl;
+          std::cout << "Client receive time (T4): " << t4 << " ms" << std::endl;
 
-          std::cout << "Client receive time (T4): " << local_time << " ms"
-                    << std::endl;
-          std::cout << "Computed clock delta: " << std::fixed
-                    << std::setprecision(3) << static_cast<double>(delta) / 1000
-                    << " seconds" << std::endl;
+          // Calculate round-trip delay (δ) and clock offset (θ)
+          uint64_t delta = (t4 - t1) - (t3 - t2);
+          int64_t theta = ((int64_t)(t2 - t1) + (int64_t)(t3 - t4)) / 2;
 
+          std::cout << "Round-trip delay (δ): " << delta << " ms" << std::endl;
+          std::cout << "Clock offset (θ): " << theta << " ms" << std::endl;
+
+          // Store round-trip time and clock delta
+          rtt_to_clock_delta[delta] = theta;
+
+          // Extract the clock delta corresponding to the smallest round-trip
+          // time std::map is an ordered associative container that stores
+          // elements in key order. The function rtt_to_clock_delta.begin()
+          // returns an iterator to the first element in the map, which is the
+          // element with the smallest key. Since we store round-trip times as
+          // keys, rtt_to_clock_delta.begin() gives us the entry with the
+          // smallest round-trip time.
+          auto min_element = rtt_to_clock_delta.begin();
+          int64_t current_clock_delta = min_element->second;
+
+          std::cout << "Current computed clock delta: " << current_clock_delta
+                    << " ms" << std::endl;
           packet_received = true;
         }
         enet_packet_destroy(event.packet);
