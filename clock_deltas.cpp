@@ -2,10 +2,10 @@
 #include <cstring>
 #include <enet/enet.h>
 #include <getopt.h>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <string>
-#include <thread>
 
 // Default port
 #define DEFAULT_PORT 7777
@@ -13,7 +13,7 @@
 // Helper function to get the current time in milliseconds
 uint64_t get_time_in_ms() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(
-             std::chrono::steady_clock::now().time_since_epoch())
+             std::chrono::system_clock::now().time_since_epoch())
       .count();
 }
 
@@ -140,12 +140,13 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
     uint64_t t1 = get_time_in_ms();
     ENetPacket *packet =
         enet_packet_create(&t1, sizeof(t1), ENET_PACKET_FLAG_RELIABLE);
+
     enet_peer_send(peer, 0, packet);
-    // enet_host_flush(client);
+    enet_host_flush(client);
 
     // Receive T2 and T3 from server
     bool packet_received = false;
-    while (enet_host_service(client, &event, 0) > 0) {
+    while (enet_host_service(client, &event, send_interval_ms) > 0) {
       switch (event.type) {
       case ENET_EVENT_TYPE_RECEIVE: {
         if (event.packet->dataLength == sizeof(uint64_t) * 2) {
@@ -161,13 +162,13 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
 
           std::cout << "Client receive time (T4): " << local_time << " ms"
                     << std::endl;
-          std::cout << "Computed clock delta: " << delta << " ms" << std::endl;
+          std::cout << "Computed clock delta: " << std::fixed
+                    << std::setprecision(3) << static_cast<double>(delta) / 1000
+                    << " seconds" << std::endl;
 
           packet_received = true;
         }
         enet_packet_destroy(event.packet);
-        std::this_thread::sleep_for(
-            std::chrono::milliseconds(send_interval_ms));
         break;
       }
 
