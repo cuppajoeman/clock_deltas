@@ -275,12 +275,12 @@ void print_time(const std::string &label, const time_point &tp) {
 void print_microseconds(const std::string &label,
                         std::chrono::microseconds us) {
   auto seconds = std::chrono::duration_cast<std::chrono::duration<double>>(us);
-  auto milliseconds =
-      std::chrono::duration_cast<std::chrono::milliseconds>(us).count();
+  auto milliseconds = std::chrono::duration<double, std::milli>(us).count();
 
   std::cout << label << " - microseconds: " << us.count() << " us, ";
   if (us < std::chrono::seconds(1)) {
-    std::cout << "milliseconds: " << milliseconds << " ms, ";
+    std::cout << "milliseconds: " << std::fixed << std::setprecision(6)
+              << milliseconds << " ms, ";
     std::cout << "seconds: " << std::fixed << std::setprecision(6)
               << seconds.count() << " s\n";
   } else {

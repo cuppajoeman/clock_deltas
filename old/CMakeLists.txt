@@ -10,6 +10,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(external_libraries/enet)
 include_directories(external_libraries/enet/include)
 
-add_executable(clock_deltas clock_deltas.cpp)
-target_link_libraries(clock_deltas enet)
+# Server executable
+add_executable(server server.cpp common.cpp ring_buffer.cpp)
+target_link_libraries(server enet)
 
+# Client executable
+add_executable(client client.cpp common.cpp ring_buffer.cpp)
+target_link_libraries(client enet)
