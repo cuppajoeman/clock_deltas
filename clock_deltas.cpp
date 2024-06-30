@@ -79,7 +79,7 @@ void run_server(int port) {
     enet_deinitialize();
 }
 
-void run_client(const std::string& server_ip, int port) {
+void run_client(const std::string& server_ip, int port, int send_rate) {
     if (enet_initialize() != 0) {
         std::cerr << "An error occurred while initializing ENet." << std::endl;
         exit(EXIT_FAILURE);
@@ -108,73 +108,80 @@ void run_client(const std::string& server_ip, int port) {
         exit(EXIT_FAILURE);
     }
 
-    std::map<uint64_t, int64_t> rtt_to_clock_delta;
-
-    // Send initial timestamp T1 to server
-    uint64_t t1 = get_time_in_ms();
-    ENetPacket* packet = enet_packet_create(&t1, sizeof(t1), ENET_PACKET_FLAG_RELIABLE);
-    enet_peer_send(peer, 0, packet);
-    enet_host_flush(client);
-
-    // Receive T2 and T3 from server
-    while (enet_host_service(client, &event, 3000) > 0) {
-        switch (event.type) {
-            case ENET_EVENT_TYPE_RECEIVE: {
-                if (event.packet->dataLength == sizeof(uint64_t) * 2) {
-                    uint64_t response_times[2];
-                    std::memcpy(response_times, event.packet->data, sizeof(response_times));
-                    uint64_t t2 = response_times[0];
-                    uint64_t t3 = response_times[1];
-
-                    uint64_t local_time = get_time_in_ms();
-                    int64_t delta = ((t2 - t1) + (t3 - local_time)) / 2;
-                    rtt_to_clock_delta[event.peer->incomingPeerID] = delta;
-
-                    std::cout << "Client receive time (T4): " << local_time << " ms" << std::endl;
-                    std::cout << "Computed clock delta: " << delta << " ms" << std::endl;
-
-                    enet_peer_disconnect(peer, 0);
-                    enet_host_flush(client);
-
-                    // Wait for disconnection
-                    while (enet_host_service(client, &event, 3000) > 0) {
-                        switch (event.type) {
-                            case ENET_EVENT_TYPE_RECEIVE:
-                                enet_packet_destroy(event.packet);
-                                break;
-                            case ENET_EVENT_TYPE_DISCONNECT:
-                                std::cout << "Disconnection succeeded." << std::endl;
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-
-                    enet_host_destroy(client);
-                    enet_deinitialize();
-                    return;
-                }
-                break;
-            }
-
-            case ENET_EVENT_TYPE_DISCONNECT:
-                std::cout << "Disconnected from server." << std::endl;
-                break;
-
-            default:
-                break;
-        }
+    /* Wait up to 5 seconds for the connection attempt to succeed. */
+    if (enet_host_service(client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
+        std::cout << "Connection to " << server_ip << " succeeded." << std::endl;
+    } else {
+        /* Either the 5 seconds are up or a disconnect event was */
+        /* received. Reset the peer in the event the 5 seconds   */
+        /* had run out without any significant event.            */
+        std::cout << "Connection to " << server_ip << " failed, exiting." << std::endl;
+        enet_host_destroy(client);
+        enet_deinitialize();
+        exit(EXIT_FAILURE);
     }
 
-    // Cleanup in case of error or timeout
-    std::cerr << "Error: Timeout or unexpected disconnection from server." << std::endl;
+    std::map<uint64_t, int64_t> rtt_to_clock_delta;
+    int send_interval_ms = 1000 / send_rate;
+
+    while (true) {
+        // Send initial timestamp T1 to server
+        uint64_t t1 = get_time_in_ms();
+        ENetPacket* packet = enet_packet_create(&t1, sizeof(t1), ENET_PACKET_FLAG_RELIABLE);
+        enet_peer_send(peer, 0, packet);
+        enet_host_flush(client);
+
+        // Receive T2 and T3 from server
+        bool packet_received = false;
+        while (enet_host_service(client, &event, 3000) > 0) {
+            switch (event.type) {
+                case ENET_EVENT_TYPE_RECEIVE: {
+                    if (event.packet->dataLength == sizeof(uint64_t) * 2) {
+                        uint64_t response_times[2];
+                        std::memcpy(response_times, event.packet->data, sizeof(response_times));
+                        uint64_t t2 = response_times[0];
+                        uint64_t t3 = response_times[1];
+
+                        uint64_t local_time = get_time_in_ms();
+                        int64_t delta = ((t2 - t1) + (t3 - local_time)) / 2;
+                        rtt_to_clock_delta[event.peer->incomingPeerID] = delta;
+
+                        std::cout << "Client receive time (T4): " << local_time << " ms" << std::endl;
+                        std::cout << "Computed clock delta: " << delta << " ms" << std::endl;
+
+                        packet_received = true;
+                    }
+                    enet_packet_destroy(event.packet);
+                    break;
+                }
+
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    std::cout << "Disconnected from server." << std::endl;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        if (!packet_received) {
+            std::cerr << "Error: Timeout or unexpected disconnection from server." << std::endl;
+            enet_peer_disconnect(peer, 0);
+            enet_host_flush(client);
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(send_interval_ms));
+    }
+
+    // Cleanup in case of exit
+    enet_peer_disconnect(peer, 0);
+    enet_host_flush(client);
     enet_host_destroy(client);
     enet_deinitialize();
-    exit(EXIT_FAILURE);
 }
 
 void print_usage(const char* program_name) {
-    std::cout << "Usage: " << program_name << " [-s [-p <port>] | -c <server_ip> [-p <port>]]" << std::endl;
+    std::cout << "Usage: " << program_name << " [-s [-p <port>] | -c <server_ip> [-p <port>] [-r <rate>]]" << std::endl;
     std::cout << "Description: A program which can compute the clock deltas between two computers." << std::endl;
     std::cout << "The delta is given such that the local clock time + the delta yields the server clock time." << std::endl;
     std::cout << "This is only an approximation and uses the assumption that travel time to and from the server is identical." << std::endl;
@@ -183,6 +190,7 @@ void print_usage(const char* program_name) {
     std::cout << "  -s         Run as server (default port: " << DEFAULT_PORT << ")" << std::endl;
     std::cout << "  -c <ip>    Run as client and connect to the specified server IP (default port: " << DEFAULT_PORT << ")" << std::endl;
     std::cout << "  -p <port>  Specify port number (optional)" << std::endl;
+    std::cout << "  -r <rate>  Specify client send rate in Hz (optional, default: 20)" << std::endl;
 }
 
 int main(int argc, char** argv) {
@@ -191,24 +199,22 @@ int main(int argc, char** argv) {
     bool is_client = false;
     std::string server_ip;
     int port = DEFAULT_PORT;
+    int send_rate = 20;  // Default send rate 20 Hz
 
-    while ((opt = getopt(argc, argv, "scp:")) != -1) {
+    while ((opt = getopt(argc, argv, "sc:p:r:")) != -1) {
         switch (opt) {
             case 's':
                 is_server = true;
                 break;
             case 'c':
                 is_client = true;
-                if (optind < argc && argv[optind] != nullptr) {
-                    server_ip = std::string(argv[optind]);
-                    ++optind; // Move to the next argument after server IP
-                } else {
-                    std::cerr << "Error: Missing server IP address." << std::endl;
-                    exit(EXIT_FAILURE);
-                }
+                server_ip = std::string(optarg);
                 break;
             case 'p':
                 port = std::stoi(optarg);
+                break;
+            case 'r':
+                send_rate = std::stoi(optarg);
                 break;
             default:
                 print_usage(argv[0]);
@@ -219,7 +225,7 @@ int main(int argc, char** argv) {
     if (is_server) {
         run_server(port);
     } else if (is_client && !server_ip.empty()) {
-        run_client(server_ip, port);
+        run_client(server_ip, port, send_rate);
     } else {
         print_usage(argv[0]);
         exit(EXIT_FAILURE);
