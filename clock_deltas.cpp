@@ -96,6 +96,7 @@ void run_client(const std::string& server_ip, int port) {
     ENetPeer* peer;
     ENetEvent event;
 
+    // Validate and set the server IP address
     enet_address_set_host(&address, server_ip.c_str());
     address.port = port;
 
@@ -109,75 +110,67 @@ void run_client(const std::string& server_ip, int port) {
 
     std::map<uint64_t, int64_t> rtt_to_clock_delta;
 
-    // Wait for the connection to succeed
-    if (enet_host_service(client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-        std::cout << "Connection to server succeeded." << std::endl;
+    // Send initial timestamp T1 to server
+    uint64_t t1 = get_time_in_ms();
+    ENetPacket* packet = enet_packet_create(&t1, sizeof(t1), ENET_PACKET_FLAG_RELIABLE);
+    enet_peer_send(peer, 0, packet);
+    enet_host_flush(client);
 
-        while (true) {
-            // Send a packet with the current time (T1)
-            uint64_t t1 = get_time_in_ms();
-            ENetPacket* packet = enet_packet_create(&t1, sizeof(t1), ENET_PACKET_FLAG_RELIABLE);
-            enet_peer_send(peer, 0, packet);
-            enet_host_flush(client);
-
-            // Wait for the response
-            if (enet_host_service(client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
-                uint64_t t4 = get_time_in_ms();
-                uint64_t response_times[2];
-                std::memcpy(response_times, event.packet->data, sizeof(response_times));
-                uint64_t t2 = response_times[0];
-                uint64_t t3 = response_times[1];
-
-                std::cout << "Received packet with T2: " << t2 << " ms, T3: " << t3 << " ms" << std::endl;
-                std::cout << "Client receive time (T4): " << t4 << " ms" << std::endl;
-
-                // Calculate round-trip delay (δ) and clock offset (θ)
-                uint64_t delta = (t4 - t1) - (t3 - t2);
-                int64_t theta = ((int64_t)(t2 - t1) + (int64_t)(t3 - t4)) / 2;
-
-                std::cout << "Round-trip delay (δ): " << delta << " ms" << std::endl;
-                std::cout << "Clock offset (θ): " << theta << " ms" << std::endl;
-
-                // Store round-trip time and clock delta
-                rtt_to_clock_delta[delta] = theta;
-
-                // Extract the clock delta corresponding to the smallest round-trip time
-                // std::map is an ordered associative container that stores elements in key order.
-                // The function rtt_to_clock_delta.begin() returns an iterator to the first element 
-                // in the map, which is the element with the smallest key. Since we store round-trip
-                // times as keys, rtt_to_clock_delta.begin() gives us the entry with the smallest round-trip time.
-                auto min_element = rtt_to_clock_delta.begin();
-                int64_t current_clock_delta = min_element->second;
-
-                std::cout << "Current computed clock delta: " << current_clock_delta << " ms" << std::endl;
-
-                enet_packet_destroy(event.packet);
-            } else {
-                std::cerr << "Failed to receive response from server." << std::endl;
-            }
-
-            std::this_thread::sleep_for(std::chrono::seconds(1)); // Wait before sending the next packet
-        }
-    } else {
-        std::cerr << "Connection to server failed." << std::endl;
-    }
-
-    enet_peer_disconnect(peer, 0);
+    // Receive T2 and T3 from server
     while (enet_host_service(client, &event, 3000) > 0) {
         switch (event.type) {
-            case ENET_EVENT_TYPE_RECEIVE:
-                enet_packet_destroy(event.packet);
+            case ENET_EVENT_TYPE_RECEIVE: {
+                if (event.packet->dataLength == sizeof(uint64_t) * 2) {
+                    uint64_t response_times[2];
+                    std::memcpy(response_times, event.packet->data, sizeof(response_times));
+                    uint64_t t2 = response_times[0];
+                    uint64_t t3 = response_times[1];
+
+                    uint64_t local_time = get_time_in_ms();
+                    int64_t delta = ((t2 - t1) + (t3 - local_time)) / 2;
+                    rtt_to_clock_delta[event.peer->incomingPeerID] = delta;
+
+                    std::cout << "Client receive time (T4): " << local_time << " ms" << std::endl;
+                    std::cout << "Computed clock delta: " << delta << " ms" << std::endl;
+
+                    enet_peer_disconnect(peer, 0);
+                    enet_host_flush(client);
+
+                    // Wait for disconnection
+                    while (enet_host_service(client, &event, 3000) > 0) {
+                        switch (event.type) {
+                            case ENET_EVENT_TYPE_RECEIVE:
+                                enet_packet_destroy(event.packet);
+                                break;
+                            case ENET_EVENT_TYPE_DISCONNECT:
+                                std::cout << "Disconnection succeeded." << std::endl;
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+
+                    enet_host_destroy(client);
+                    enet_deinitialize();
+                    return;
+                }
                 break;
+            }
+
             case ENET_EVENT_TYPE_DISCONNECT:
-                std::cout << "Disconnection succeeded." << std::endl;
+                std::cout << "Disconnected from server." << std::endl;
                 break;
+
             default:
                 break;
         }
     }
 
+    // Cleanup in case of error or timeout
+    std::cerr << "Error: Timeout or unexpected disconnection from server." << std::endl;
     enet_host_destroy(client);
     enet_deinitialize();
+    exit(EXIT_FAILURE);
 }
 
 void print_usage(const char* program_name) {
@@ -206,7 +199,13 @@ int main(int argc, char** argv) {
                 break;
             case 'c':
                 is_client = true;
-                server_ip = optarg;
+                if (optind < argc && argv[optind] != nullptr) {
+                    server_ip = std::string(argv[optind]);
+                    ++optind; // Move to the next argument after server IP
+                } else {
+                    std::cerr << "Error: Missing server IP address." << std::endl;
+                    exit(EXIT_FAILURE);
+                }
                 break;
             case 'p':
                 port = std::stoi(optarg);
