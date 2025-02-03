@@ -6,6 +6,7 @@
 #include <iostream>
 #include <map>
 #include <string>
+#include <unordered_map>
 
 // Default port
 #define DEFAULT_PORT 7777
@@ -16,6 +17,13 @@ uint64_t get_time_in_ms() {
              std::chrono::system_clock::now().time_since_epoch())
       .count();
 }
+
+struct TimeData {
+  TimeData() : time(0), id(0) {}
+  TimeData(uint64_t time, uint64_t id) : time(time), id(id) {}
+  uint64_t time;
+  uint64_t id;
+};
 
 void run_server(int port, int receive_rate) {
   if (enet_initialize() != 0) {
@@ -52,15 +60,22 @@ void run_server(int port, int receive_rate) {
 
       case ENET_EVENT_TYPE_RECEIVE: {
         uint64_t cts_receive_tmos = get_time_in_ms();
-        uint64_t cts_send_tmoc;
-        std::memcpy(&cts_send_tmoc, event.packet->data, sizeof(cts_send_tmoc));
+
+        TimeData td_cst;
+        std::memcpy(&td_cst, event.packet->data, sizeof(TimeData));
+
+        uint64_t cts_send_tmoc = td_cst.time;
+        uint64_t send_id = td_cst.id;
+
         uint64_t stc_send_tmos = get_time_in_ms();
 
         std::cout << "Received packet with cts_send_tmoc: " << cts_send_tmoc << " ms" << std::endl;
         std::cout << "Server receive time cts_receive_tmos: " << cts_receive_tmos << " ms" << std::endl;
         std::cout << "Server send time stc_send_tmos: " << stc_send_tmos << " ms" << std::endl;
 
-        uint64_t response_times[2] = {cts_receive_tmos, stc_send_tmos};
+        TimeData td_crt(cts_receive_tmos, send_id);
+        TimeData td_sst(stc_send_tmos, send_id);
+        TimeData response_times[2] = {td_crt, td_sst};
         ENetPacket *response_packet = enet_packet_create(
             response_times, sizeof(response_times), ENET_PACKET_FLAG_RELIABLE);
 
@@ -132,34 +147,62 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
     exit(EXIT_FAILURE);
   }
 
+  // round trip travel time
   std::map<uint64_t, int64_t> rtt_to_clock_delta;
   int send_interval_ms = 1000 / send_rate;
 
+  std::unordered_map<uint64_t, uint64_t> send_id_to_cts_send_tmoc;
+
+
+  // TODO: this is bad, instead we should use a limited vector here 
+  // so that the average time is used for the last couple samples, fine for now
+  uint64_t total_rtt = 0;
+  uint64_t num_measurements = 0;
+
+  uint64_t send_id = 0;
   while (true) {
     // client to server send time measured on client
     uint64_t cts_send_tmoc = get_time_in_ms();
+
+    TimeData td(cts_send_tmoc, send_id);
+
     ENetPacket *packet =
-        enet_packet_create(&cts_send_tmoc, sizeof(cts_send_tmoc), ENET_PACKET_FLAG_RELIABLE);
+        enet_packet_create(&td, sizeof(TimeData), ENET_PACKET_FLAG_RELIABLE);
+    send_id_to_cts_send_tmoc[send_id] = cts_send_tmoc;
 
     enet_peer_send(peer, 0, packet);
     enet_host_flush(client);
 
-    // Receive T2 and T3 from server
+    std::cout << "just sent packet to server at time: " << cts_send_tmoc << "ms"<<  std::endl;
+    send_id++;
+
     bool packet_received = false;
     while (enet_host_service(client, &event, send_interval_ms) > 0) {
       switch (event.type) {
       case ENET_EVENT_TYPE_RECEIVE: {
-        if (event.packet->dataLength == sizeof(uint64_t) * 2) {
+        if (event.packet->dataLength == sizeof(TimeData) * 2) {
           uint64_t stc_receive_tmoc = get_time_in_ms();
-          uint64_t response_times[2];
+          TimeData response_times[2];
           std::memcpy(response_times, event.packet->data,
                       sizeof(response_times));
-          uint64_t cts_receive_tmos = response_times[0];
-          uint64_t stc_send_tmos = response_times[1];
 
-          std::cout << "Received packet with cts_receive_tmos: " << cts_receive_tmos << " ms, stc_send_tmos: " << stc_send_tmos
+
+          TimeData td_crt = response_times[0];
+          TimeData td_sst = response_times[1];
+          uint64_t cts_receive_tmos = td_crt.time;
+          uint64_t stc_send_tmos = td_sst.time;
+
+
+          // note that we could have indexed with either of td_crt or td_sst's id, as they are the same
+          // also note this is safe because if you get a message back from the server it's only
+          // because the client already created and sent the packet and at the same time 
+          // we also store into this map:
+          uint64_t corresponding_cts_send_tmoc = send_id_to_cts_send_tmoc[td_crt.id];
+
+          std::cout << "just received packet at time: " << stc_receive_tmoc << " ms" << std::endl;
+
+          std::cout << "packet contained cts_receive_tmos: " << cts_receive_tmos << " ms and stc_send_tmos: " << stc_send_tmos
                     << " ms" << std::endl;
-          std::cout << "Client receive time stc_receive_tmoc: " << stc_receive_tmoc << " ms" << std::endl;
 
           // in the following setup we assume the following things which are not the reality of the situation:
             // * client to server travel time is constant is a constant tt
@@ -216,17 +259,23 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
             // * t4 = stc_receive_tmoc
             //
           // Calculate round-trip delay (δ) and clock offset (θ)
-          uint64_t time_between_client_send_and_receive = (stc_receive_tmoc - cts_send_tmoc);
+          uint64_t time_between_client_send_and_receive = (stc_receive_tmoc - corresponding_cts_send_tmoc);
           uint64_t time_spent_on_server = (stc_send_tmos - cts_receive_tmos);
           uint64_t delta = time_between_client_send_and_receive - time_spent_on_server;
 
-          int64_t theta = ((int64_t)(cts_receive_tmos - cts_send_tmoc) + (int64_t)(stc_send_tmos - stc_receive_tmoc)) / 2;
+          int64_t theta = ((int64_t)(cts_receive_tmos - corresponding_cts_send_tmoc) + (int64_t)(stc_send_tmos - stc_receive_tmoc)) / 2;
 
           std::cout << "Round-trip delay (δ): " << delta << " ms" << std::endl;
           std::cout << "Clock offset (θ): " << theta << " ms" << std::endl;
 
           // Store round-trip time and clock delta
           rtt_to_clock_delta[delta] = theta;
+
+          // Calculate and display the average round trip time
+          total_rtt += delta;
+          num_measurements++;
+          uint64_t average_rtt = total_rtt / num_measurements;
+          std::cout << "Average round-trip time (RTT): " << average_rtt << " ms" << std::endl;
 
           // Extract the clock delta corresponding to the smallest round-trip
           // time std::map is an ordered associative container that stores
@@ -255,12 +304,14 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
       }
     }
 
-    if (!packet_received) {
-      std::cerr << "Error: Timeout or unexpected disconnection from server."
-                << std::endl;
-      enet_peer_disconnect(peer, 0);
-      // enet_host_flush(client);
-    }
+    // not sure why this was here, but I commented out because on the first iteration 
+    // you might not have an enet message which would trigger this.
+    /*if (!packet_received) {*/
+    /*  std::cerr << "Error: Timeout or unexpected disconnection from server."*/
+    /*            << std::endl;*/
+    /*  enet_peer_disconnect(peer, 0);*/
+    /*  // enet_host_flush(client);*/
+    /*}*/
   }
 
   // Cleanup in case of exit
