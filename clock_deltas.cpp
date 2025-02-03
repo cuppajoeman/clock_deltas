@@ -51,16 +51,16 @@ void run_server(int port, int receive_rate) {
         break;
 
       case ENET_EVENT_TYPE_RECEIVE: {
-        uint64_t t2 = get_time_in_ms();
-        uint64_t t1;
-        std::memcpy(&t1, event.packet->data, sizeof(t1));
-        uint64_t t3 = get_time_in_ms();
+        uint64_t cts_receive_tmos = get_time_in_ms();
+        uint64_t cts_send_tmoc;
+        std::memcpy(&cts_send_tmoc, event.packet->data, sizeof(cts_send_tmoc));
+        uint64_t stc_send_tmos = get_time_in_ms();
 
-        std::cout << "Received packet with T1: " << t1 << " ms" << std::endl;
-        std::cout << "Server receive time (T2): " << t2 << " ms" << std::endl;
-        std::cout << "Server send time (T3): " << t3 << " ms" << std::endl;
+        std::cout << "Received packet with cts_send_tmoc: " << cts_send_tmoc << " ms" << std::endl;
+        std::cout << "Server receive time cts_receive_tmos: " << cts_receive_tmos << " ms" << std::endl;
+        std::cout << "Server send time stc_send_tmos: " << stc_send_tmos << " ms" << std::endl;
 
-        uint64_t response_times[2] = {t2, t3};
+        uint64_t response_times[2] = {cts_receive_tmos, stc_send_tmos};
         ENetPacket *response_packet = enet_packet_create(
             response_times, sizeof(response_times), ENET_PACKET_FLAG_RELIABLE);
 
@@ -136,10 +136,10 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
   int send_interval_ms = 1000 / send_rate;
 
   while (true) {
-    // Send initial timestamp T1 to server
-    uint64_t t1 = get_time_in_ms();
+    // client to server send time measured on client
+    uint64_t cts_send_tmoc = get_time_in_ms();
     ENetPacket *packet =
-        enet_packet_create(&t1, sizeof(t1), ENET_PACKET_FLAG_RELIABLE);
+        enet_packet_create(&cts_send_tmoc, sizeof(cts_send_tmoc), ENET_PACKET_FLAG_RELIABLE);
 
     enet_peer_send(peer, 0, packet);
     enet_host_flush(client);
@@ -150,20 +150,77 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
       switch (event.type) {
       case ENET_EVENT_TYPE_RECEIVE: {
         if (event.packet->dataLength == sizeof(uint64_t) * 2) {
-          uint64_t t4 = get_time_in_ms();
+          uint64_t stc_receive_tmoc = get_time_in_ms();
           uint64_t response_times[2];
           std::memcpy(response_times, event.packet->data,
                       sizeof(response_times));
-          uint64_t t2 = response_times[0];
-          uint64_t t3 = response_times[1];
+          uint64_t cts_receive_tmos = response_times[0];
+          uint64_t stc_send_tmos = response_times[1];
 
-          std::cout << "Received packet with T2: " << t2 << " ms, T3: " << t3
+          std::cout << "Received packet with cts_receive_tmos: " << cts_receive_tmos << " ms, stc_send_tmos: " << stc_send_tmos
                     << " ms" << std::endl;
-          std::cout << "Client receive time (T4): " << t4 << " ms" << std::endl;
+          std::cout << "Client receive time stc_receive_tmoc: " << stc_receive_tmoc << " ms" << std::endl;
 
+          // in the following setup we assume the following things which are not the reality of the situation:
+            // * client to server travel time is constant is a constant tt
+            // * server to client travel time is also tt
+            // * given "real time" which is what we perceive, if we freeze time (at any time) 
+            // and check the server clock (sc) and compare with the client clock (cc) 
+            // there is a constant cd such that sc = cc + cd
+            //
+            // Note that the fact that sc = cc + cd gives us an easy way to convert a time that was measured
+            // on the server to a time that was measured on the client if you have the server time, simply 
+            // subtract cd to obtain cc, and if you have cc add cd to obtain sc
+            // 
+            //
+            //             <--tt-->      <--tt-->
+            //                    t2     t3
+            // server ------------x------x---------------------
+            //                   /        \
+            //                  /          \
+            //                 /            \
+            //                /              \
+            //               /                \
+            //              /                  \
+            // client -----x---------------------x-------------
+            //             t1                    t4
+            // 
+            // If at time t1 on the client we sent out the packet, then on the clients clock
+            // we expect that packet to arrive at t1 + tt, since t1 is measured on the client then
+            // that time on the server would be given by t1 + dc + tt, which represents the time 
+            // the server should theoretically receive the packet, therefore we have
+            //  
+            // t2 - t1 = (t1 + dc + tt) - t1 = dc + tt = tt + dc 
+            //
+            // tt = t2 - t1 - dc (A)
+            //
+            // similarly for the packet travelling back we have:
+            //
+            // t4 - t3 = (t3 - dc + tt) - t3 = tt - dc 
+            //
+            // tt = t4 - t3 + dc (B)
+            //
+            // therefore 
+            //
+            // t4 - t3 + dc = t2 - t1 - dc
+            //
+            // so 
+            //
+            // dc = ((t2 - t1) + (t3 - t4)) / 2
+            //
+            // now in the code we have these identifications:
+            //
+            // * t1 = cts_send_tmoc
+            // * t2 = cts_receive_tmos
+            // * t3 = stc_send_tmos
+            // * t4 = stc_receive_tmoc
+            //
           // Calculate round-trip delay (δ) and clock offset (θ)
-          uint64_t delta = (t4 - t1) - (t3 - t2);
-          int64_t theta = ((int64_t)(t2 - t1) + (int64_t)(t3 - t4)) / 2;
+          uint64_t time_between_client_send_and_receive = (stc_receive_tmoc - cts_send_tmoc);
+          uint64_t time_spent_on_server = (stc_send_tmos - cts_receive_tmos);
+          uint64_t delta = time_between_client_send_and_receive - time_spent_on_server;
+
+          int64_t theta = ((int64_t)(cts_receive_tmos - cts_send_tmoc) + (int64_t)(stc_send_tmos - stc_receive_tmoc)) / 2;
 
           std::cout << "Round-trip delay (δ): " << delta << " ms" << std::endl;
           std::cout << "Clock offset (θ): " << theta << " ms" << std::endl;
