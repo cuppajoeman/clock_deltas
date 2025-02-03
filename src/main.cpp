@@ -205,59 +205,59 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
                     << " ms" << std::endl;
 
           // in the following setup we assume the following things which are not the reality of the situation:
-            // * client to server travel time is constant is a constant tt
-            // * server to client travel time is also tt
-            // * given "real time" which is what we perceive, if we freeze time (at any time) 
-            // and check the server clock (sc) and compare with the client clock (cc) 
-            // there is a constant cd such that sc = cc + cd
-            //
-            // Note that the fact that sc = cc + cd gives us an easy way to convert a time that was measured
-            // on the server to a time that was measured on the client if you have the server time, simply 
-            // subtract cd to obtain cc, and if you have cc add cd to obtain sc
-            // 
-            //
-            //             <--tt-->      <--tt-->
-            //                    t2     t3
-            // server ------------x------x---------------------
-            //                   /        \
-            //                  /          \
-            //                 /            \
-            //                /              \
-            //               /                \
-            //              /                  \
-            // client -----x---------------------x-------------
-            //             t1                    t4
-            // 
-            // If at time t1 on the client we sent out the packet, then on the clients clock
-            // we expect that packet to arrive at t1 + tt, since t1 is measured on the client then
-            // that time on the server would be given by t1 + dc + tt, which represents the time 
-            // the server should theoretically receive the packet, therefore we have
-            //  
-            // t2 - t1 = (t1 + dc + tt) - t1 = dc + tt = tt + dc 
-            //
-            // tt = t2 - t1 - dc (A)
-            //
-            // similarly for the packet travelling back we have:
-            //
-            // t4 - t3 = (t3 - dc + tt) - t3 = tt - dc 
-            //
-            // tt = t4 - t3 + dc (B)
-            //
-            // therefore 
-            //
-            // t4 - t3 + dc = t2 - t1 - dc
-            //
-            // so 
-            //
-            // dc = ((t2 - t1) + (t3 - t4)) / 2
-            //
-            // now in the code we have these identifications:
-            //
-            // * t1 = cts_send_tmoc
-            // * t2 = cts_receive_tmos
-            // * t3 = stc_send_tmos
-            // * t4 = stc_receive_tmoc
-            //
+          // * client to server travel time is constant is a constant tt
+          // * server to client travel time is also tt
+          // * given "real time" which is what we perceive, if we freeze time (at any time) 
+          // and check the server clock (sc) and compare with the client clock (cc) 
+          // there is a constant cd such that sc = cc + cd
+          //
+          // Note that the fact that sc = cc + cd gives us an easy way to convert a time that was measured
+          // on the server to a time that was measured on the client if you have the server time, simply 
+          // subtract cd to obtain cc, and if you have cc add cd to obtain sc
+          // 
+          //
+          //             <--tt-->      <--tt-->
+          //                    t2     t3
+          // server ------------x------x---------------------
+          //                   /        \
+          //                  /          \
+          //                 /            \
+          //                /              \
+          //               /                \
+          //              /                  \
+          // client -----x---------------------x-------------
+          //             t1                    t4
+          // 
+          // If at time t1 on the client we sent out the packet, then on the clients clock
+          // we expect that packet to arrive at t1 + tt, since t1 is measured on the client then
+          // that time on the server would be given by t1 + dc + tt, which represents the time 
+          // the server should theoretically receive the packet, therefore we have
+          //  
+          // t2 - t1 = (t1 + dc + tt) - t1 = dc + tt = tt + dc 
+          //
+          // tt = t2 - t1 - dc (A)
+          //
+          // similarly for the packet travelling back we have:
+          //
+          // t4 - t3 = (t3 - dc + tt) - t3 = tt - dc 
+          //
+          // tt = t4 - t3 + dc (B)
+          //
+          // therefore 
+          //
+          // t4 - t3 + dc = t2 - t1 - dc
+          //
+          // so 
+          //
+          // dc = ((t2 - t1) + (t3 - t4)) / 2
+          //
+          // now in the code we have these identifications:
+          //
+          // * t1 = cts_send_tmoc
+          // * t2 = cts_receive_tmos
+          // * t3 = stc_send_tmos
+          // * t4 = stc_receive_tmoc
+          //
           // Calculate round-trip delay (δ) and clock offset (θ)
           uint64_t time_between_client_send_and_receive = (stc_receive_tmoc - corresponding_cts_send_tmoc);
           uint64_t time_spent_on_server = (stc_send_tmos - cts_receive_tmos);
@@ -284,6 +284,22 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
           // element with the smallest key. Since we store round-trip times as
           // keys, rtt_to_clock_delta.begin() gives us the entry with the
           // smallest round-trip time.
+          //
+          // as mentioned earlier our assumptions are incorrect, thus we cannot expect our equations to actually work out
+          // in order for our equation to work out "more", and give us accurate results
+          // we should prioritize those data samples collected whose circumstances are closer 
+          // to the assumptions, one assumption is that the travel time to the server and back from the server is the same
+          // and additionally implicitly assuming that the network path is the same, under this assumption
+          // if a round trip time takes longer than usually this is because there are delays.
+          //
+          // delays come from "bare metal" delays and any delays spent waiting in router queues, thus if a 
+          // round trip takes longer assuming the same network path it is because there were more delays, 
+          // since these delays may occur on the way there and potentially not on the way back (or vise versa)
+          // data collected in these types of samples have a higher probability of not adhering to the assumption
+          // that travel time to the server and back from the server are the same, therefore we should cast 
+          // away those samples, therefore we we use those samples collected which have minimal round trip travel time
+          // and only use the minimum one.
+          // 
           auto min_element = rtt_to_clock_delta.begin();
           int64_t current_clock_delta = min_element->second;
 
