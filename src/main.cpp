@@ -276,6 +276,7 @@ void run_client(const std::string &server_ip, int port, int send_rate) {
           num_measurements++;
           uint64_t average_rtt = total_rtt / num_measurements;
           std::cout << "Average round-trip time (RTT): " << average_rtt << " ms" << std::endl;
+          std::cout << "Assuming identical travel time to and from server, then have trip time is: " << average_rtt / 2.0 << " ms" << std::endl;
 
           // Extract the clock delta corresponding to the smallest round-trip
           // time std::map is an ordered associative container that stores
